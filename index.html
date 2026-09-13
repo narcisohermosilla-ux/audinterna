@@ -1195,6 +1195,17 @@
         <div class="card"><h4 style="margin-top:0">Forma de Facturación (Contado/Crédito)</h4><canvas id="chFormaFacturacion" height="220"></canvas></div>
         <div class="card"><h4 style="margin-top:0">Diferencia Farma vs No Farma por PDV</h4><canvas id="chDiferenciaPdv" height="220"></canvas></div>
       </div>
+      <!-- NUEVOS GRÁFICOS DE AUDITORÍAS -->
+      <div style="margin-top:18px">
+        <h3 style="color:var(--azul);margin-bottom:12px">📊 Auditorías Internas</h3>
+        <div class="grid c4" id="audDashKpis" style="margin-bottom:14px"></div>
+        <div class="grid c2" id="audDashGraficos">
+          <div class="card"><h4 style="margin-top:0">Auditorías por PDV</h4><canvas id="chAudPorPdv" height="220"></canvas></div>
+          <div class="card"><h4 style="margin-top:0">Auditorías por Mes</h4><canvas id="chAudPorMes" height="220"></canvas></div>
+          <div class="card"><h4 style="margin-top:0">Promedio de Calificación por PDV</h4><canvas id="chAudCalificacion" height="220"></canvas></div>
+          <div class="card"><h4 style="margin-top:0">Estado de Auditorías</h4><canvas id="chAudEstado" height="220"></canvas></div>
+        </div>
+      </div>
     </div>
 
     <!-- ============ PLAN DE SEGUIMIENTO (admin/auditor) ============ -->
@@ -3370,8 +3381,17 @@ async function exportarActaPDF(){
       doc.text('Acta Nº '+String(a.actaNro||'')+' — Hoja '+pag+' de '+totalPaginas, pageW-margin, 290, {align:'right'});
     }
 
-    doc.save('Acta_'+(a.actaNro||'borrador')+'.pdf');
+    const pdfNombreActa = 'Acta_'+(a.actaNro||'borrador')+'.pdf';
+    doc.save(pdfNombreActa);
     apiPost('log', { accion:'EXPORTAR_PDF', modulo:'Acta', detalle:'acta:'+a.actaNro }).catch(()=>{});
+    // Guardar en nube
+    if(a.id){
+      try{
+        const pdfB64Acta = doc.output('datauristring').split(',')[1];
+        const rPdf = await apiPost('pdfGuardar',{ tipo:'acta', registroId:a.id, nombreBase:pdfNombreActa, pdfBase64:pdfB64Acta });
+        if(rPdf && rPdf.ok) toast('✅ PDF guardado en la nube');
+      }catch(e){ console.warn('No se pudo guardar PDF en nube:',e); }
+    }
   }catch(err){
     toast('Error al generar el PDF: '+err.message);
   }
@@ -3551,6 +3571,70 @@ function arqueoCheckDescargarExcel(){
 let grafActasCache = [], grafArqueosCache = [], grafInfocheckCache = [];
 let grafCharts = {};
 
+async function cargarDashboardAuditorias(){
+  try{
+    const r = await apiPost('dashboardAuditorias', {});
+    if(!r || !r.ok) return;
+    const { kpis, porPdv, porMes, promedioPorPdv } = r;
+
+    // KPIs
+    const kEl = document.getElementById('audDashKpis');
+    if(kEl) kEl.innerHTML = [
+      { label:'Total Auditorías', val: kpis.totalAuditorias, color:'var(--azul)' },
+      { label:'Finalizadas', val: kpis.audFinalizadas, color:'var(--verde)' },
+      { label:'En Curso', val: kpis.audEnCurso, color:'var(--naranja,#e88d00)' },
+      { label:'Actas Totales', val: kpis.totalActas, color:'var(--azul2)' },
+    ].map(k=>`<div class="card aud-kpi"><span>${k.label}</span><b style="color:${k.color}">${k.val}</b></div>`).join('');
+
+    // Gráfico: por PDV
+    const pdvLabels = Object.keys(porPdv);
+    const pdvData = Object.values(porPdv);
+    if(pdvLabels.length && window.grafCharts){
+      if(window.grafCharts['chAudPorPdv']) window.grafCharts['chAudPorPdv'].destroy();
+      const ctxPdv = document.getElementById('chAudPorPdv');
+      if(ctxPdv) window.grafCharts['chAudPorPdv'] = new Chart(ctxPdv.getContext('2d'),{
+        type:'bar', data:{ labels:pdvLabels, datasets:[{ label:'Auditorías', data:pdvData, backgroundColor:'rgba(18,58,138,0.7)' }] },
+        options:{ plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true } } }
+      });
+    }
+
+    // Gráfico: por Mes
+    const mesLabels = Object.keys(porMes).sort();
+    const mesData = mesLabels.map(k=>porMes[k]);
+    if(mesLabels.length && window.grafCharts){
+      if(window.grafCharts['chAudPorMes']) window.grafCharts['chAudPorMes'].destroy();
+      const ctxMes = document.getElementById('chAudPorMes');
+      if(ctxMes) window.grafCharts['chAudPorMes'] = new Chart(ctxMes.getContext('2d'),{
+        type:'line', data:{ labels:mesLabels, datasets:[{ label:'Auditorías', data:mesData, borderColor:'#0f8a52', backgroundColor:'rgba(15,138,82,0.1)', tension:0.3 }] },
+        options:{ plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true } } }
+      });
+    }
+
+    // Gráfico: promedio calificación
+    const calPdvLabels = Object.keys(promedioPorPdv);
+    const calPdvData = Object.values(promedioPorPdv);
+    if(calPdvLabels.length && window.grafCharts){
+      if(window.grafCharts['chAudCalificacion']) window.grafCharts['chAudCalificacion'].destroy();
+      const ctxCal = document.getElementById('chAudCalificacion');
+      if(ctxCal) window.grafCharts['chAudCalificacion'] = new Chart(ctxCal.getContext('2d'),{
+        type:'bar', data:{ labels:calPdvLabels, datasets:[{ label:'%', data:calPdvData, backgroundColor:'rgba(15,138,82,0.7)' }] },
+        options:{ plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, max:100 } } }
+      });
+    }
+
+    // Gráfico: estado
+    if(window.grafCharts){
+      if(window.grafCharts['chAudEstado']) window.grafCharts['chAudEstado'].destroy();
+      const ctxEst = document.getElementById('chAudEstado');
+      if(ctxEst) window.grafCharts['chAudEstado'] = new Chart(ctxEst.getContext('2d'),{
+        type:'doughnut',
+        data:{ labels:['Finalizadas','En Curso'], datasets:[{ data:[kpis.audFinalizadas, kpis.audEnCurso], backgroundColor:['#0f8a52','#e88d00'] }] },
+        options:{ plugins:{ legend:{ position:'bottom' } } }
+      });
+    }
+  }catch(e){ console.warn('Dashboard auditorías:',e); }
+}
+
 async function graficosOnEntrarPantalla(){
   const [rActas, rArqueos, rInfocheck] = await Promise.all([
     apiPost('actaList', {}), apiPost('arqueoList', {}), apiPost('infocheckList', {})
@@ -3631,6 +3715,7 @@ function graficosAplicarFiltros(){
 
   graficosRenderKpis(actas, arqueos, infocheck);
   graficosRenderCharts(actas, arqueos, infocheck);
+  cargarDashboardAuditorias();
 }
 
 function graficosRenderKpis(actas, arqueos, infocheck){
@@ -6698,8 +6783,17 @@ async function audGenerarPdf(record, includeEvidence){
 
     audDrawPdfLetterheads(doc, pageWidth, pageHeight, margin, m.sucursal);
     const safeName=(m.sucursal||'sucursal').replace(/[^\wáéíóúñÁÉÍÓÚÑ -]/g,'').replace(/\s+/g,'_');
-    doc.save(`Auditoria_${safeName}_${m.fecha||''}.pdf`);
+    const pdfNombreAud = `Auditoria_${safeName}_${m.fecha||''}.pdf`;
+    doc.save(pdfNombreAud);
     toast('PDF generado');
+    // Guardar en nube
+    if(record.id){
+      try{
+        const pdfB64Aud = doc.output('datauristring').split(',')[1];
+        const rPdfAud = await apiPost('pdfGuardar',{ tipo:'auditoria', registroId:record.id, nombreBase:pdfNombreAud, pdfBase64:pdfB64Aud });
+        if(rPdfAud && rPdfAud.ok) toast('✅ PDF guardado en la nube');
+      }catch(e){ console.warn('No se pudo guardar PDF en nube:',e); }
+    }
   }catch(e){
     console.error(e);
     toast('No se pudo generar el PDF: '+e.message);
