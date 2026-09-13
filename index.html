@@ -385,18 +385,8 @@
 
             usuarioActual = JSON.parse(userData);
 
-            // Validar token contra Supabase
-            try {
-                const v = await apiPost('validarSesion');
-                if (!v || !v.ok) {
-                    sessionStorage.removeItem('usuarioLogueado');
-                    window.location.href = 'login.html';
-                    return;
-                }
-            } catch(e) {
-                // Si no hay conexión, continuar con la sesión local
-                console.warn('Sin conexión para validar sesión:', e);
-            }
+            // Registrar acceso (sin bloquear si falla)
+            apiPost('log', { accion: 'ACCESO', modulo: 'Dashboard', detalle: 'Acceso al panel principal' }).catch(()=>{});
 
             document.getElementById('nombre-usuario').textContent = usuarioActual.nombre;
             const esAdmin = usuarioActual.rol === 'admin' || usuarioActual.rol === 'superusuario';
