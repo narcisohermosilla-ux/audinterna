@@ -3,26 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plataforma Central de Auditoría</title>
+    <title>Bitácora de Auditoría - Sistema</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root { --primary: #0d1620; --secondary: #2c3e50; --accent: #0056b3; --accent-light: #3d9bff; --background: #f4f6f9; --text: #333; --border: #dee2e6; }
+        :root {
+            --primary: #1a252f;
+            --accent: #0056b3;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --background: #f4f6f9;
+            --text: #333;
+            --border: #dee2e6;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { display: flex; min-height: 100vh; background-color: var(--background); color: var(--text); }
+        body { background: var(--background); color: var(--text); margin: 0 0 0 260px; padding: 24px; min-height: 100vh; }
 
-        /* Menú Lateral */
+        .container { max-width: 1500px; margin: 0 auto; }
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            color: white; padding: 25px; border-radius: 8px; margin-bottom: 25px;
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .header h1 { font-size: 1.5rem; }
+        .header p { opacity: 0.85; font-size: 0.9rem; margin-top: 4px; }
+        .header-actions { display: flex; gap: 10px; }
+        .btn {
+            display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border: none;
+            border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: 0.2s; text-decoration: none;
+        }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: #004494; }
+        .btn-outline { background: white; color: var(--accent); border: 1px solid var(--accent); }
+        .btn-outline:hover { background: #eef4fb; }
+
+        .section { background: white; padding: 25px; border-radius: 8px; margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .section-title { font-size: 1.15rem; color: var(--primary); margin-bottom: 18px; display: flex; align-items: center; gap: 10px; }
+
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; }
+        .stat { background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); color: white; border-radius: 10px; padding: 18px 20px; }
+        .stat h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.85; font-weight: 600; }
+        .stat .number { font-size: 2rem; font-weight: 700; margin-top: 4px; }
+
+        .filtros-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 16px; }
+        .filtros-grid label { display: block; font-weight: 600; font-size: 0.8rem; margin-bottom: 6px; color: #495057; }
+        .filtros-grid select, .filtros-grid input {
+            width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.88rem;
+        }
+        .filtros-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+        .filtro-info { font-size: 0.85rem; color: #6c757d; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: #f4f6f9; color: var(--primary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.4px; position: sticky; top: 0; }
+        tr:hover { background: #f9fbfd; }
+        .tabla-scroll { max-height: 620px; overflow-y: auto; overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
+
+        .badge-accion { padding: 4px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+        .accion-login { background: #d1e7ff; color: #084298; }
+        .accion-logout { background: #e2e3e5; color: #495057; }
+        .accion-crear { background: #d4edda; color: #1e7e34; }
+        .accion-editar { background: #fff3cd; color: #856404; }
+        .accion-eliminar { background: #f8d7da; color: #a12626; }
+        .accion-cambio_password { background: #e0cffc; color: #5a2ca0; }
+        .accion-intento_fallido { background: #ffe3cc; color: #a1520e; }
+
+        .empty-state { text-align: center; padding: 40px 20px; color: #adb5bd; }
+        .nota-integridad {
+            background: #eef4fb; border-left: 4px solid var(--accent); padding: 12px 16px;
+            border-radius: 6px; font-size: 0.82rem; color: #495057; margin-top: 16px;
+        }
+        .acceso-denegado {
+            max-width: 480px; margin: 80px auto; text-align: center; background: white;
+            padding: 40px 30px; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        }
+        .acceso-denegado i { font-size: 3rem; color: var(--danger); margin-bottom: 16px; }
+
+        @media print {
+            .sidebar, .header-actions, .filtros-grid, .filtros-toolbar { display: none !important; }
+            body { margin: 0; background: white; }
+        }
+        @media (max-width: 900px) {
+            body { margin-left: 0; padding: 14px; }
+            .sidebar { display: none; }
+        }
+
+        /* ===== Menú Lateral (Auditoría) ===== */
         .sidebar {
             width: 260px;
-            background: linear-gradient(180deg, #0f1c2b 0%, #16233299 100%), #10192447;
             background-color: #101924;
             color: white;
             padding: 24px 0;
             display: flex;
             flex-direction: column;
             position: fixed;
+            top: 0; left: 0;
             height: 100vh;
             box-shadow: 2px 0 24px rgba(0,0,0,0.35);
             overflow: hidden;
+            z-index: 100;
         }
         .sidebar::before {
             content: '';
@@ -43,7 +123,6 @@
             background: radial-gradient(circle at 30% 0%, rgba(0,86,179,0.35), transparent 60%);
             pointer-events: none;
         }
-
         .brand-logo {
             display: block;
             width: 128px;
@@ -56,14 +135,13 @@
         .sidebar-header { position: relative; z-index: 1; padding: 0 20px 22px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 20px; text-align: center; }
         .sidebar-header .logo-icon {
             width: 48px; height: 48px; border-radius: 12px;
-            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            background: linear-gradient(135deg, #0056b3, #3d9bff);
             display: flex; align-items: center; justify-content: center;
             margin: 0 auto 10px auto; font-size: 20px; color: white;
             box-shadow: 0 0 22px rgba(61,155,255,0.55);
         }
         .sidebar-header h2 { font-size: 1.25rem; letter-spacing: 2.5px; font-weight: 700; }
         .sidebar-header .subtitle { display: block; font-size: 0.68rem; color: #6f83a0; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 4px; }
-
         .nav-links { position: relative; z-index: 1; list-style: none; padding: 0 12px; flex: 1; }
         .nav-links li { margin-bottom: 4px; }
         .nav-links a {
@@ -74,63 +152,45 @@
         }
         .nav-links a i { width: 18px; text-align: center; font-size: 1rem; color: #57708f; transition: color 0.2s; }
         .nav-links a:hover { background: rgba(255,255,255,0.06); color: #fff; }
-        .nav-links a:hover i { color: var(--accent-light); }
+        .nav-links a:hover i { color: #3d9bff; }
         .nav-links a.active {
             background: linear-gradient(90deg, rgba(0,86,179,0.30), rgba(0,86,179,0.03));
-            color: #fff; border-left: 3px solid var(--accent-light);
+            color: #fff; border-left: 3px solid #3d9bff;
             box-shadow: inset 0 0 24px rgba(0,86,179,0.18);
         }
-        .nav-links a.active i { color: var(--accent-light); }
+        .nav-links a.active i { color: #3d9bff; }
         .sidebar-footer { position: relative; z-index: 1; padding: 14px 20px 0 20px; border-top: 1px solid rgba(255,255,255,0.08); }
-        .credito-dev { margin-top: 6px; font-size: 0.66rem; color: #46536a; text-align: center; letter-spacing: 0.3px; }
-
-        /* Contenido */
-        .main-content { flex: 1; padding: 30px; margin-left: 260px; }
-        
-        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; background: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); }
-        .header-top h1 { font-size: 1.5rem; color: var(--primary); }
-        .user-profile { text-align: right; }
-        .user-profile strong { color: var(--accent); display: block; font-size: 1rem;}
-        .btn-logout { background-color: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; margin-top: 5px; cursor: pointer; font-size: 0.85rem; font-weight: bold; }
-
-        /* Vistas / Pestañas */
-        .view-section { display: none; animation: fadeIn 0.3s; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        
-        .category-header { font-size: 1.3rem; color: var(--primary); margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid var(--accent); }
-        
-        .tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
-        .tool-card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-top: 4px solid var(--secondary); display: flex; flex-direction: column; }
-        .tool-card h3 { margin-bottom: 8px; color: var(--primary); }
-        .tool-card p { color: #6c757d; font-size: 0.9rem; margin-bottom: 20px; flex-grow: 1; }
-        .btn { display: block; background-color: var(--secondary); color: white; padding: 10px; text-decoration: none; border-radius: 4px; text-align: center; font-weight: bold; transition: 0.2s; }
-        .btn:hover { background-color: var(--primary); }
-
-        /* Módulo de Configuración */
-        .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
-        .config-card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .config-card h3 { margin-bottom: 20px; color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 10px; }
-        
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9rem; color: #495057; }
-        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 4px; }
-        
-        .checkbox-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 5px; }
-        .checkbox-group label { font-weight: normal; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; cursor: pointer; }
-
-        .btn-action { background-color: var(--accent); color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; }
-        .btn-action:hover { background-color: #004494; }
-        .btn-danger { background-color: #dc3545; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
-        .btn-warning { background-color: #ffc107; color: #212529; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold; }
-
-        /* Tabla de usuarios */
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
-        th { background-color: #f8f9fa; color: var(--primary); }
-        
-        /* Ocultar elementos según rol */
-        .admin-only { display: none; }
+        .sidebar-footer a { color: #93a2b8; text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 10px; padding: 8px 4px; transition: color 0.2s; }
+        .sidebar-footer a:hover { color: #ff6b6b; }
+        .credito-dev { margin-top: 10px; font-size: 0.66rem; color: #46536a; text-align: center; letter-spacing: 0.3px; }
     </style>
+
+    <!-- ── Integración Supabase ──────────────────────────────── -->
+    <script>
+      const _SUPA_URL = 'https://rklqmqofnsaafcfwuoxf.supabase.co/functions/v1/api';
+      function _getToken() {
+        const s = JSON.parse(sessionStorage.getItem('usuarioLogueado') || 'null');
+        return s ? s.token : null;
+      }
+      async function apiPost(action, params = {}) {
+        const token = _getToken();
+        const res = await fetch(_SUPA_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, token, ...params })
+        });
+        return res.json();
+      }
+      function _logBitacora(accion, modulo, detalle) {
+        apiPost('log', { accion, modulo, detalle: detalle || '' }).catch(()=>{});
+      }
+      // Verificar sesión al cargar
+      (function() {
+        const s = sessionStorage.getItem('usuarioLogueado');
+        if (!s) { window.location.href = 'login.html'; }
+      })();
+    </script>
+
 </head>
 <body>
 
@@ -142,514 +202,333 @@
             <span class="subtitle">Plataforma Corporativa</span>
         </div>
         <ul class="nav-links">
-            <li id="menu-logistico" style="display: none;"><a onclick="cambiarVista('logistico')"><i class="fa-solid fa-boxes-packing"></i> Centro Logístico</a></li>
-            <li id="menu-ventas" style="display: none;"><a onclick="cambiarVista('ventas')"><i class="fa-solid fa-store"></i> Puntos de Ventas</a></li>
-            <li id="menu-financiera" style="display: none;"><a onclick="cambiarVista('financiera')"><i class="fa-solid fa-chart-line"></i> Financiera Contable</a></li>
-            <li id="menu-equipo" style="display: none;"><a onclick="cambiarVista('equipo')"><i class="fa-solid fa-sitemap"></i> Gestión de Equipo</a></li>
-            <li id="menu-activos" style="display: none;"><a onclick="cambiarVista('activos')"><i class="fa-solid fa-laptop"></i> Control de Activos</a></li>
-            <li id="menu-seguridad" style="display: none;"><a onclick="cambiarVista('seguridad')"><i class="fa-solid fa-shield-halved"></i> Seguridad & Monitoreo</a></li>
-            <li id="menu-riesgos" style="display: none;"><a onclick="cambiarVista('riesgos')"><i class="fa-solid fa-chess-board"></i> Matriz de Riesgos</a></li>
-            <li id="menu-bitacora" style="display: none;"><a href="bitacora_auditoria.html"><i class="fa-solid fa-clipboard-list"></i> Bitácora de Auditoría</a></li>
-            <li id="menu-configuracion"><a onclick="cambiarVista('configuracion')"><i class="fa-solid fa-gear"></i> Configuración</a></li>
+            <li id="menu-logistico" style="display: none;"><a href="index.html?vista=logistico"><i class="fa-solid fa-boxes-packing"></i> Centro Logístico</a></li>
+            <li id="menu-ventas" style="display: none;"><a href="index.html?vista=ventas"><i class="fa-solid fa-store"></i> Puntos de Ventas</a></li>
+            <li id="menu-financiera" style="display: none;"><a href="index.html?vista=financiera"><i class="fa-solid fa-chart-line"></i> Financiera Contable</a></li>
+            <li id="menu-equipo" style="display: none;"><a href="organigrama.html"><i class="fa-solid fa-sitemap"></i> Gestión de Equipo</a></li>
+            <li id="menu-activos" style="display: none;"><a href="control_activos.html"><i class="fa-solid fa-laptop"></i> Control de Activos</a></li>
+            <li id="menu-seguridad" style="display: none;"><a href="index.html?vista=seguridad"><i class="fa-solid fa-shield-halved"></i> Seguridad & Monitoreo</a></li>
+            <li id="menu-riesgos" style="display: none;"><a href="matriz_riesgos.html"><i class="fa-solid fa-chess-board"></i> Matriz de Riesgos</a></li>
+            <li id="menu-bitacora" style="display: none;"><a href="bitacora_auditoria.html" class="active"><i class="fa-solid fa-clipboard-list"></i> Bitácora de Auditoría</a></li>
+            <li id="menu-configuracion"><a href="index.html?vista=configuracion"><i class="fa-solid fa-gear"></i> Configuración</a></li>
         </ul>
         <div class="sidebar-footer">
+            <a onclick="cerrarSesionSidebar()"><i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión</a>
             <div class="credito-dev">Desarrollado por Narciso Hermosilla</div>
         </div>
     </nav>
 
-    <main class="main-content">
-        
-        <header class="header-top">
+    <div id="accesoDenegado" class="acceso-denegado" style="display:none;">
+        <i class="fa-solid fa-lock"></i>
+        <h2>Acceso Restringido</h2>
+        <p>La Bitácora de Auditoría solo está disponible para administradores del sistema.</p>
+        <a href="index.html" class="btn btn-primary" style="margin-top:16px;">Volver al Dashboard</a>
+    </div>
+
+    <div class="container" id="mainContent">
+        <div class="header">
             <div>
-                <h1 id="titulo-seccion">Bienvenido al Sistema</h1>
+                <h1><i class="fa-solid fa-clipboard-list"></i> Bitácora de Auditoría</h1>
+                <p>Registro de accesos y cambios realizados dentro de la plataforma</p>
             </div>
-            <div class="user-profile">
-                <span id="rol-usuario-texto">Auditor</span>
-                <strong id="nombre-usuario">Cargando...</strong>
-                <button class="btn-logout" onclick="cerrarSesion()">Cerrar Sesión</button>
+            <div class="header-actions">
+                <button class="btn btn-outline" onclick="exportarCSV()"><i class="fa-solid fa-file-csv"></i> Exportar CSV</button>
+                <button class="btn btn-outline" onclick="window.print()"><i class="fa-solid fa-print"></i> Imprimir</button>
+                <button class="btn btn-primary" onclick="irAlDashboard()"><i class="fa-solid fa-house"></i> Dashboard</button>
             </div>
-        </header>
+        </div>
 
-        <!-- VISTA: CENTRO LOGÍSTICO -->
-        <section id="logistico" class="view-section">
-            <h2 class="category-header">Módulos de Centro Logístico</h2>
-            <div class="tools-grid">
-                <div class="tool-card" style="border-left: 4px solid #0056b3;">
-                    <h3>🔍 Auditoría Interna — Inventarios</h3>
-                    <p>Sistema completo de actas de inventario, arqueos, auditorías con checklist, planes de seguimiento y firma digital por PDV.</p>
-                    <a href="auditoria.html" class="btn" style="background:#0056b3;">Abrir Sistema</a>
+        <div class="section">
+            <div class="stats">
+                <div class="stat">
+                    <h3>Eventos Registrados</h3>
+                    <div class="number" id="stat-total">0</div>
                 </div>
-                <div class="tool-card">
-                    <h3>Control de Entradas</h3>
-                    <p>Auditoría de recepción de mercadería y cruce con remisiones de fábrica.</p>
-                    <a href="#" class="btn" style="opacity:0.5;cursor:not-allowed;">Próximamente</a>
+                <div class="stat" style="background: linear-gradient(135deg, #084298 0%, #0d6efd 100%);">
+                    <h3>Inicios de Sesión (Hoy)</h3>
+                    <div class="number" id="stat-logins-hoy">0</div>
                 </div>
-            </div>
-        </section>
-
-        <!-- VISTA: PUNTOS DE VENTAS -->
-        <section id="ventas" class="view-section">
-            <h2 class="category-header">Módulos de Puntos de Ventas</h2>
-            <div class="tools-grid">
-                <div class="tool-card">
-                    <h3>Inspección y Cumplimiento</h3>
-                    <p>Checklist para auditoría de sucursales, control de cajas y POS.</p>
-                    <a href="checklist_cumplimiento.html" class="btn">Abrir Herramienta</a>
+                <div class="stat" style="background: linear-gradient(135deg, #a1520e 0%, #fd7e14 100%);">
+                    <h3>Intentos Fallidos</h3>
+                    <div class="number" id="stat-fallidos">0</div>
                 </div>
-                <div class="tool-card">
-                    <h3>Arqueo de Valores</h3>
-                    <p>Arqueo de caja y control de cajero, con historial, diferencias (vale/pagaré) y gráficos por PDV.</p>
-                    <a href="arqueo_valores.html" class="btn">Abrir Herramienta</a>
+                <div class="stat" style="background: linear-gradient(135deg, #a12626 0%, #e63950 100%);">
+                    <h3>Eliminaciones</h3>
+                    <div class="number" id="stat-eliminaciones">0</div>
                 </div>
             </div>
-        </section>
+        </div>
 
-        <!-- VISTA: FINANCIERA CONTABLE -->
-        <section id="financiera" class="view-section">
-            <h2 class="category-header">Módulos de Financiera Contable</h2>
-            <div class="tools-grid">
-                <div class="tool-card">
-                    <h3>Cronograma de Recuperación</h3>
-                    <p>Control de flujo de caja y saldos pendientes.</p>
-                    <a href="#" class="btn">Abrir Herramienta</a>
+        <div class="section">
+            <h3 class="section-title"><i class="fa-solid fa-filter"></i> Filtros</h3>
+            <div class="filtros-grid">
+                <div>
+                    <label>Usuario</label>
+                    <select id="filtroUsuario" onchange="renderizarTablaBitacora()">
+                        <option value="">Todos los usuarios</option>
+                    </select>
                 </div>
-                <div class="tool-card">
-                    <h3>Gestión de Tareas de Auditoría</h3>
-                    <p>Seguimiento por persona, periodicidad, etapas, tiempos y cumplimiento.</p>
-                    <a href="gestion_tareas.html" class="btn">Abrir Herramienta</a>
+                <div>
+                    <label>Módulo</label>
+                    <select id="filtroModulo" onchange="renderizarTablaBitacora()">
+                        <option value="">Todos los módulos</option>
+                    </select>
                 </div>
-                <div class="tool-card">
-                    <h3>Control de Reformas de Obras y Proyectos</h3>
-                    <p>Checklist de reformas y proyectos por sucursal, con resumen valorizado.</p>
-                    <a href="control_reformas.html" class="btn">Abrir Herramienta</a>
+                <div>
+                    <label>Tipo de acción</label>
+                    <select id="filtroAccion" onchange="renderizarTablaBitacora()">
+                        <option value="">Todas las acciones</option>
+                        <option value="LOGIN">Inicio de sesión</option>
+                        <option value="LOGOUT">Cierre de sesión</option>
+                        <option value="INTENTO_FALLIDO">Intento fallido</option>
+                        <option value="CREAR">Creación</option>
+                        <option value="EDITAR">Edición</option>
+                        <option value="ELIMINAR">Eliminación</option>
+                        <option value="CAMBIO_PASSWORD">Cambio de contraseña</option>
+                    </select>
                 </div>
-                <div class="tool-card">
-                    <h3>Control de IP de Sucursales</h3>
-                    <p>Verificación de acceso web y credenciales locales por sucursal.</p>
-                    <a href="control_ip.html" class="btn">Abrir Herramienta</a>
+                <div>
+                    <label>Desde</label>
+                    <input type="date" id="filtroDesde" onchange="renderizarTablaBitacora()">
                 </div>
-                <div class="tool-card">
-                    <h3>Planificador de Rutas</h3>
-                    <p>Organización de rutas y ubicaciones de sucursales para visitas de auditoría.</p>
-                    <a href="planificador_rutas.html" class="btn">Abrir Herramienta</a>
+                <div>
+                    <label>Hasta</label>
+                    <input type="date" id="filtroHasta" onchange="renderizarTablaBitacora()">
                 </div>
-            </div>
-        </section>
-
-        <!-- VISTA: GESTIÓN DE EQUIPO -->
-        <section id="equipo" class="view-section">
-            <h2 class="category-header">Gestión de Equipo y Recursos</h2>
-            <div class="tools-grid">
-                <div class="tool-card">
-                    <h3>Organigrama de Auditoría</h3>
-                    <p>Módulo para visualizar la estructura del departamento, jerarquías y dependencias del personal.</p>
-                    <a href="organigrama.html" class="btn">Abrir Herramienta</a>
-                </div>
-            </div>
-        </section>
-
-        <!-- VISTA: CONTROL DE ACTIVOS -->
-        <section id="activos" class="view-section">
-            <h2 class="category-header">Control de Activos Tecnológicos</h2>
-            <div class="tools-grid">
-                <div class="tool-card">
-                    <h3>Registro y Transferencia</h3>
-                    <p>Módulo de auditoría para la asignación, consulta y gestión de equipos informáticos.</p>
-                    <a href="control_activos.html" class="btn">Abrir Herramienta</a>
+                <div>
+                    <label>Buscar en detalle</label>
+                    <input type="text" id="filtroTexto" placeholder="Ej: nombre, sucursal..." oninput="renderizarTablaBitacora()">
                 </div>
             </div>
-        </section>
-
-        <!-- VISTA: SEGURIDAD & MONITOREO (NUEVO) -->
-        <section id="seguridad" class="view-section">
-            <h2 class="category-header">Seguridad & Monitoreo Operativo</h2>
-            <div class="tools-grid">
-                <div class="tool-card">
-                    <h3>Auditoría de Accesos y Cámaras</h3>
-                    <p>Control de registros de seguridad, revisión de cámaras en sucursales y alertas de eventos críticos.</p>
-                    <a href="#" class="btn">Abrir Herramienta</a>
-                </div>
+            <div class="filtros-toolbar">
+                <span class="filtro-info" id="filtroInfo">Mostrando todos los eventos</span>
+                <button class="btn btn-outline" onclick="limpiarFiltrosBitacora()"><i class="fa-solid fa-filter-circle-xmark"></i> Limpiar filtros</button>
             </div>
-        </section>
+        </div>
 
-        <!-- VISTA: MATRIZ DE RIESGOS -->
-        <section id="riesgos" class="view-section">
-            <h2 class="category-header">Matriz de Riesgos</h2>
-            <div class="tools-grid">
-                <div class="tool-card">
-                    <h3>Matriz de Riesgos</h3>
-                    <p>Identificación y evaluación de riesgos de auditoría, con matriz probabilidad × impacto interactiva.</p>
-                    <a href="matriz_riesgos.html" class="btn">Abrir Herramienta</a>
-                </div>
+        <div class="section">
+            <h3 class="section-title"><i class="fa-solid fa-list"></i> Registro de Eventos</h3>
+            <div class="tabla-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha y Hora</th>
+                            <th>Usuario</th>
+                            <th>Acción</th>
+                            <th>Módulo</th>
+                            <th>Detalle</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaBitacora"></tbody>
+                </table>
             </div>
-        </section>
-
-        <!-- VISTA: CONFIGURACIÓN -->
-        <section id="configuracion" class="view-section">
-            <h2 class="category-header">Configuración del Sistema</h2>
-            
-            <div class="config-grid">
-                
-                <!-- Módulo de Cambio de Contraseña -->
-                <div class="config-card">
-                    <h3>Cambio de Contraseña</h3>
-                    <div class="form-group">
-                        <label>Contraseña Actual</label>
-                        <input type="password" id="pass-actual" placeholder="Ingrese contraseña actual">
-                    </div>
-                    <div class="form-group">
-                        <label>Nueva Contraseña</label>
-                        <input type="password" id="pass-nueva" placeholder="Ingrese nueva contraseña">
-                    </div>
-                    <button class="btn-action" onclick="cambiarContrasenaPerfil()">Actualizar Contraseña</button>
-                    <p id="msg-pass" style="margin-top: 10px; display: none; font-size: 0.9rem;"></p>
-                </div>
-
-                <!-- SOLO ADMIN: Gestión, Edición y Eliminación de Funcionarios / Usuarios -->
-                <div class="config-card admin-only" id="panel-admin" style="grid-column: span 2;">
-                    <h3 id="form-titulo-modo">Crear Nuevo Funcionario</h3>
-                    
-                    <form id="form-usuario" onsubmit="guardarUsuario(event)" style="background: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 25px;">
-                        <input type="hidden" id="modo-edicion" value="crear">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                            <div class="form-group"><label>ID Usuario</label><input type="text" id="crear-id" placeholder="Ej: jcarlos" required></div>
-                            <div class="form-group"><label>Nombre Completo</label><input type="text" id="crear-nombre" placeholder="Nombre y Apellido" required></div>
-                            <div class="form-group"><label>Contraseña</label><input type="password" id="crear-pass" placeholder="Contraseña" required></div>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Asignar Herramientas / Módulos permitidos:</label>
-                            <div class="checkbox-group">
-                                <label><input type="checkbox" name="herramientas" value="logistico"> 📦 Centro Logístico</label>
-                                <label><input type="checkbox" name="herramientas" value="audinterna"> 🔍 Auditoría Interna (Inventarios)</label>
-                                <label><input type="checkbox" name="herramientas" value="ventas"> 🏪 Puntos de Ventas</label>
-                                <label><input type="checkbox" name="herramientas" value="financiera"> 📊 Financiera Contable</label>
-                                <label><input type="checkbox" name="herramientas" value="equipo"> 👥 Gestión de Equipo</label>
-                                <label><input type="checkbox" name="herramientas" value="activos"> 💻 Control de Activos</label>
-                                <label><input type="checkbox" name="herramientas" value="seguridad"> 🔒 Seguridad & Monitoreo</label>
-                                <label><input type="checkbox" name="herramientas" value="riesgos"> 🎯 Matriz de Riesgos</label>
-                            </div>
-                        </div>
-                        <div style="display: flex; gap: 10px; margin-top: 10px;">
-                            <button type="submit" class="btn-action" id="btn-guardar-usuario">Registrar Funcionario</button>
-                            <button type="button" class="btn-secondary" id="btn-cancelar-edicion" style="display: none; padding: 10px 15px; border: 1px solid #ccc; background: #e2e8f0; border-radius: 4px; cursor: pointer; font-weight: bold;" onclick="cancelarEdicion()">Cancelar</button>
-                        </div>
-                    </form>
-
-                    <h4>Funcionarios Registrados</h4>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Nombre</th>
-                                <th>Herramientas Asignadas</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabla-usuarios">
-                            <!-- Se llena con JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-
+            <div id="bitacoraEmptyState" class="empty-state" style="display:none;">
+                <i class="fa-solid fa-clipboard-list" style="font-size:2rem; margin-bottom:10px; display:block;"></i>
+                No hay eventos que coincidan con los filtros seleccionados.
             </div>
-        </section>
-
-    </main>
+            <div class="nota-integridad no-print">
+                <i class="fa-solid fa-circle-info"></i>
+                Este registro es de solo lectura desde la interfaz: no existe un botón para borrar eventos individuales ni vaciar la bitácora completa, para preservar la integridad del historial de auditoría.
+            </div>
+        </div>
+    </div>
 
     <script>
-        // ── Configuración Supabase ──────────────────────────────────────────
-        const SUPABASE_URL = 'https://rklqmqofnsaafcfwuoxf.supabase.co/functions/v1/api';
-
-        function getToken() {
-            const s = JSON.parse(sessionStorage.getItem('usuarioLogueado') || 'null');
-            return s ? s.token : null;
-        }
-
-        async function apiPost(action, params = {}) {
-            const token = getToken();
-            const res = await fetch(SUPABASE_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action, token, ...params })
-            });
-            return res.json();
-        }
-
-        let usuarioActual = null;
-        let dbLocal = {};
-
-        document.addEventListener('DOMContentLoaded', async () => {
+        // ===== Control de acceso: solo superusuario puede ver esta página =====
+        (function() {
             const userData = sessionStorage.getItem('usuarioLogueado');
             if (!userData) { window.location.href = 'login.html'; return; }
+            const usuario = JSON.parse(userData);
 
-            usuarioActual = JSON.parse(userData);
-
-            // Validar token contra Supabase
-            try {
-                const v = await apiPost('validarSesion');
-                if (!v || !v.ok) {
-                    sessionStorage.removeItem('usuarioLogueado');
-                    window.location.href = 'login.html';
-                    return;
-                }
-            } catch(e) {
-                // Si no hay conexión, continuar con la sesión local
-                console.warn('Sin conexión para validar sesión:', e);
-            }
-
-            document.getElementById('nombre-usuario').textContent = usuarioActual.nombre;
-            const esAdmin = usuarioActual.rol === 'admin' || usuarioActual.rol === 'superusuario';
-            document.getElementById('rol-usuario-texto').textContent = esAdmin ? 'Administrador' : 'Auditor';
-
-            if (esAdmin && !usuarioActual.herramientas) {
-                usuarioActual.herramientas = ['logistico', 'audinterna', 'ventas', 'financiera', 'equipo', 'activos', 'seguridad', 'riesgos'];
-            }
-
-            const herramientasPermitidas = usuarioActual.herramientas || [];
-
-            herramientasPermitidas.forEach(herramienta => {
-                const menuEl = document.getElementById('menu-' + herramienta);
-                if (menuEl) menuEl.style.display = 'block';
-            });
-
-            if (esAdmin) {
-                document.getElementById('panel-admin').classList.remove('admin-only');
-                await renderizarTablaUsuarios();
-                const menuBitacora = document.getElementById('menu-bitacora');
-                if (menuBitacora) menuBitacora.style.display = 'block';
-            }
-
-            // Registrar acceso en Supabase
-            apiPost('log', { accion: 'ACCESO', modulo: 'Dashboard', detalle: 'Acceso al panel principal' }).catch(()=>{});
-
-            const vistaParam = new URLSearchParams(window.location.search).get('vista');
-            if (vistaParam === 'configuracion') {
-                cambiarVista('configuracion');
-            } else if (vistaParam && herramientasPermitidas.includes(vistaParam)) {
-                cambiarVista(vistaParam);
-            } else if (herramientasPermitidas.length > 0) {
-                cambiarVista(herramientasPermitidas[0]);
-            } else {
-                cambiarVista('configuracion');
-            }
-        });
-
-        function cambiarVista(idVista) {
-            // Si es audinterna, abrir directamente la herramienta
-            if (idVista === 'audinterna') {
-                window.location.href = 'auditoria.html';
+            if (usuario.rol !== 'superusuario') {
+                document.querySelector('.sidebar').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'none';
+                document.getElementById('accesoDenegado').style.display = 'block';
+                document.body.style.marginLeft = '0';
                 return;
             }
-            document.querySelectorAll('.view-section').forEach(sec => sec.style.display = 'none');
-            document.querySelectorAll('.nav-links a').forEach(link => link.classList.remove('active'));
-            
-            document.getElementById(idVista).style.display = 'block';
-            const linkActivo = document.querySelector(`.nav-links a[onclick="cambiarVista('${idVista}')"]`);
-            if(linkActivo) linkActivo.classList.add('active');
 
-            const titulos = {
-                'logistico': 'Centro Logístico',
-                'audinterna': 'Auditoría Interna',
-                'ventas': 'Puntos de Ventas',
-                'financiera': 'Financiera Contable',
-                'equipo': 'Gestión de Equipo',
-                'activos': 'Control de Activos',
-                'seguridad': 'Seguridad & Monitoreo',
-                'riesgos': 'Matriz de Riesgos',
-                'configuracion': 'Configuración del Sistema'
-            };
-            document.getElementById('titulo-seccion').textContent = titulos[idVista] || 'Configuración';
-        }
+            // Es admin: mostrar todos los módulos del menú (igual que en el resto de la plataforma)
+            if (usuario.username === 'admin' && !usuario.herramientas) {
+                usuario.herramientas = ['logistico', 'ventas', 'financiera', 'equipo', 'activos', 'seguridad', 'riesgos'];
+            }
+            (usuario.herramientas || []).forEach(h => {
+                const el = document.getElementById('menu-' + h);
+                if (el) el.style.display = 'block';
+            });
+            document.getElementById('menu-bitacora').style.display = 'block';
+        })();
 
-        // ===== Bitácora de Auditoría del Sistema → Supabase =====
-        function registrarBitacora(accion, modulo, detalle) {
-            apiPost('log', { accion, modulo, detalle: detalle || '' }).catch(() => {});
-        }
-
-        async function cerrarSesion() {
-            try { await apiPost('logout'); } catch(e) {}
+        function cerrarSesionSidebar() {
+            registrarBitacora('LOGOUT', 'Bitácora de Auditoría', 'Cierre de sesión');
             sessionStorage.removeItem('usuarioLogueado');
             window.location.href = 'login.html';
         }
+        function irAlDashboard() { window.location.href = 'index.html'; }
 
-        async function cambiarContrasenaPerfil() {
-            const actual = document.getElementById('pass-actual').value;
-            const nueva  = document.getElementById('pass-nueva').value;
-            const msg    = document.getElementById('msg-pass');
-
-            if (nueva.length < 4) {
-                msg.textContent = 'La nueva contraseña debe tener al menos 4 caracteres.';
-                msg.style.color = 'red'; msg.style.display = 'block'; return;
-            }
+        // ===== Bitácora de Auditoría del Sistema (misma función que el resto de la plataforma) =====
+        function registrarBitacora(accion, modulo, detalle) {
             try {
-                const r = await apiPost('changePassword', { currentPassword: actual, newPassword: nueva });
-                if (r && r.ok) {
-                    msg.textContent = 'Contraseña actualizada con éxito.';
-                    msg.style.color = 'green';
-                    document.getElementById('pass-actual').value = '';
-                    document.getElementById('pass-nueva').value = '';
-                } else {
-                    msg.textContent = r && r.error ? r.error : 'Contraseña actual incorrecta.';
-                    msg.style.color = 'red';
-                }
-            } catch(e) {
-                msg.textContent = 'Error de conexión.';
-                msg.style.color = 'red';
-            }
-            msg.style.display = 'block';
-            setTimeout(() => msg.style.display = 'none', 3500);
+                const sesion = JSON.parse(sessionStorage.getItem('usuarioLogueado') || 'null');
+                const entrada = {
+                    id: Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+                    timestamp: new Date().toISOString(),
+                    usuario: sesion ? sesion.username : 'desconocido',
+                    nombre: sesion ? sesion.nombre : 'Desconocido',
+                    accion: accion,
+                    modulo: modulo,
+                    detalle: detalle || ''
+                };
+                const bitacora = JSON.parse(localStorage.getItem('bitacoraAuditoria') || '[]');
+                bitacora.push(entrada);
+                if (bitacora.length > 3000) bitacora.splice(0, bitacora.length - 3000);
+                apiPost('bitacoraGuardar', { entrada }).catch(()=>{});
+            } catch (e) { console.error('Error registrando bitácora:', e); }
         }
 
-        async function guardarUsuario(e) {
-            e.preventDefault();
-            const id     = document.getElementById('crear-id').value.toLowerCase().trim();
-            const nombre = document.getElementById('crear-nombre').value;
-            const pass   = document.getElementById('crear-pass').value;
-            const modo   = document.getElementById('modo-edicion').value;
-            const checks = document.querySelectorAll('input[name="herramientas"]:checked');
-            const herramientasAsignadas = Array.from(checks).map(cb => cb.value);
-            const rol = (id === 'admin' ? 'admin' : 'auditor');
+        // ===== Visor de la bitácora =====
+        const ACCION_LABEL = {
+            'LOGIN': 'Inicio de sesión', 'LOGOUT': 'Cierre de sesión', 'INTENTO_FALLIDO': 'Intento fallido',
+            'CREAR': 'Creación', 'EDITAR': 'Edición', 'ELIMINAR': 'Eliminación', 'CAMBIO_PASSWORD': 'Cambio de contraseña'
+        };
+        const ACCION_CLASE = {
+            'LOGIN': 'accion-login', 'LOGOUT': 'accion-logout', 'INTENTO_FALLIDO': 'accion-intento_fallido',
+            'CREAR': 'accion-crear', 'EDITAR': 'accion-editar', 'ELIMINAR': 'accion-eliminar', 'CAMBIO_PASSWORD': 'accion-cambio_password'
+        };
 
-            try {
-                let r;
-                if (modo === 'crear') {
-                    r = await apiPost('createUser', { usuario: id, password: pass, rol });
-                    if (r && r.ok) {
-                        // Guardar también herramientas en config
-                        await apiPost('saveChecklists', {
-                            checklistsJson: null,
-                            orderJson: null,
-                            usuarioConfig: JSON.stringify({ id, nombre, herramientas: herramientasAsignadas })
-                        }).catch(()=>{});
-                        // Actualizar nombre si es diferente del id
-                        dbLocal[id] = { nombre, rol, herramientas: herramientasAsignadas };
-                    }
-                } else {
-                    if (pass) {
-                        r = await apiPost('resetPassword', { usuario: id, newPassword: pass });
-                    } else {
-                        r = { ok: true };
-                    }
-                    dbLocal[id] = { ...dbLocal[id], nombre, herramientas: herramientasAsignadas };
-                }
-
-                if (r && r.ok) {
-                    registrarBitacora(modo === 'editar' ? 'EDITAR' : 'CREAR', 'Configuración',
-                        `Funcionario ${modo === 'editar' ? 'actualizado' : 'creado'} - ${id} (${nombre})`);
-                    alert(modo === 'editar' ? 'Funcionario actualizado exitosamente.' : 'Funcionario registrado exitosamente.');
-                    cancelarEdicion();
-                    await renderizarTablaUsuarios();
-                } else {
-                    alert('Error: ' + (r && r.error ? r.error : 'No se pudo guardar el funcionario.'));
-                }
-            } catch(e) {
-                alert('Error de conexión al guardar funcionario.');
-            }
+        function cargarBitacora() {
+            try { const r = await apiPost('listBitacora', { limit: 500 }); return r && r.ok ? r.data : []; } catch(e) { return []; }
         }
 
-        function editarUsuario(id) {
-            const datos = dbLocal[id];
-            if (!datos) return;
-
-            document.getElementById('crear-id').value = id;
-            document.getElementById('crear-id').disabled = true;
-            document.getElementById('crear-nombre').value = datos.nombre || id;
-            document.getElementById('crear-pass').value = '';
-
-            document.querySelectorAll('input[name="herramientas"]').forEach(cb => {
-                cb.checked = (datos.herramientas || []).includes(cb.value);
-            });
-
-            document.getElementById('modo-edicion').value = 'editar';
-            document.getElementById('form-titulo-modo').textContent = 'Editar Funcionario: ' + id;
-            document.getElementById('btn-guardar-usuario').textContent = 'Guardar Cambios';
-            document.getElementById('btn-cancelar-edicion').style.display = 'inline-block';
-
-            document.getElementById('form-usuario').scrollIntoView({ behavior: 'smooth' });
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
-        function cancelarEdicion() {
-            document.getElementById('form-usuario').reset();
-            document.getElementById('crear-id').disabled = false;
-            document.getElementById('modo-edicion').value = 'crear';
-            document.getElementById('form-titulo-modo').textContent = 'Crear Nuevo Funcionario';
-            document.getElementById('btn-guardar-usuario').textContent = 'Registrar Funcionario';
-            document.getElementById('btn-cancelar-edicion').style.display = 'none';
+        function formatearFecha(iso) {
+            const d = new Date(iso);
+            return d.toLocaleDateString('es-PY') + ' ' + d.toLocaleTimeString('es-PY', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         }
 
-        async function eliminarUsuario(idEliminar) {
-            if (idEliminar === usuarioActual.username) {
-                alert('No puedes eliminar tu propio usuario mientras estás conectado.');
+        function poblarSelectsFiltro() {
+            const eventos = cargarBitacora();
+            const usuarios = [...new Set(eventos.map(e => e.usuario))].sort();
+            const modulos = [...new Set(eventos.map(e => e.modulo))].sort();
+
+            const selUsuario = document.getElementById('filtroUsuario');
+            const valUsuario = selUsuario.value;
+            selUsuario.innerHTML = '<option value="">Todos los usuarios</option>' +
+                usuarios.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('');
+            selUsuario.value = valUsuario;
+
+            const selModulo = document.getElementById('filtroModulo');
+            const valModulo = selModulo.value;
+            selModulo.innerHTML = '<option value="">Todos los módulos</option>' +
+                modulos.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
+            selModulo.value = valModulo;
+        }
+
+        function obtenerEventosFiltrados() {
+            let eventos = cargarBitacora();
+
+            const usuario = document.getElementById('filtroUsuario').value;
+            const modulo = document.getElementById('filtroModulo').value;
+            const accion = document.getElementById('filtroAccion').value;
+            const desde = document.getElementById('filtroDesde').value;
+            const hasta = document.getElementById('filtroHasta').value;
+            const texto = (document.getElementById('filtroTexto').value || '').toLowerCase().trim();
+
+            if (usuario) eventos = eventos.filter(e => e.usuario === usuario);
+            if (modulo) eventos = eventos.filter(e => e.modulo === modulo);
+            if (accion) eventos = eventos.filter(e => e.accion === accion);
+            if (desde) eventos = eventos.filter(e => e.timestamp.slice(0, 10) >= desde);
+            if (hasta) eventos = eventos.filter(e => e.timestamp.slice(0, 10) <= hasta);
+            if (texto) eventos = eventos.filter(e =>
+                (e.detalle || '').toLowerCase().includes(texto) ||
+                (e.nombre || '').toLowerCase().includes(texto)
+            );
+
+            eventos.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            return eventos;
+        }
+
+        function renderizarTablaBitacora() {
+            const eventos = obtenerEventosFiltrados();
+            const tbody = document.getElementById('tablaBitacora');
+            const emptyState = document.getElementById('bitacoraEmptyState');
+            const total = cargarBitacora().length;
+
+            document.getElementById('filtroInfo').textContent =
+                eventos.length === total ? `Mostrando todos los eventos (${total})` : `Mostrando ${eventos.length} de ${total} eventos`;
+
+            if (eventos.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.style.display = 'block';
                 return;
             }
-            if (confirm(`¿Estás seguro de que deseas eliminar al funcionario '${idEliminar}'?`)) {
-                try {
-                    const r = await apiPost('setUserEstado', { usuario: idEliminar, estado: 'inactivo' });
-                    if (r && r.ok) {
-                        registrarBitacora('ELIMINAR', 'Configuración', `Funcionario desactivado - ${idEliminar}`);
-                        delete dbLocal[idEliminar];
-                        await renderizarTablaUsuarios();
-                    } else {
-                        alert('Error al eliminar funcionario: ' + (r && r.error ? r.error : 'Error desconocido'));
-                    }
-                } catch(e) {
-                    alert('Error de conexión.');
-                }
-            }
+            emptyState.style.display = 'none';
+
+            tbody.innerHTML = eventos.map(e => `
+                <tr>
+                    <td style="white-space:nowrap;">${formatearFecha(e.timestamp)}</td>
+                    <td><strong>${escapeHtml(e.nombre || e.usuario)}</strong><br><span style="color:#888; font-size:0.78rem;">@${escapeHtml(e.usuario)}</span></td>
+                    <td><span class="badge-accion ${ACCION_CLASE[e.accion] || ''}">${ACCION_LABEL[e.accion] || e.accion}</span></td>
+                    <td>${escapeHtml(e.modulo || '—')}</td>
+                    <td>${escapeHtml(e.detalle || '—')}</td>
+                </tr>
+            `).join('');
         }
 
-        async function renderizarTablaUsuarios() {
-            const tbody = document.getElementById('tabla-usuarios');
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#888">Cargando...</td></tr>';
-            try {
-                const r = await apiPost('listUsers');
-                if (r && r.ok && r.data) {
-                    dbLocal = {};
-                    r.data.forEach(u => { dbLocal[u.usuario] = { nombre: u.nombre, rol: u.rol, herramientas: [] }; });
-                }
-            } catch(e) { console.warn('Error cargando usuarios:', e); }
-            tbody.innerHTML = '';
-            for (const [id, datos] of Object.entries(dbLocal)) {
-                const herramientasNombres = {
-                    'logistico': '📦 Logística',
-                        'audinterna': '🔍 Auditoría Interna',
-                    'ventas': '🏪 Ventas',
-                    'financiera': '📊 Finanzas',
-                    'equipo': '👥 Equipo',
-                    'activos': '💻 Activos',
-                    'seguridad': '🔒 Seguridad'
-                };
+        function actualizarStatsBitacora() {
+            const eventos = cargarBitacora();
+            const hoy = new Date().toISOString().slice(0, 10);
 
-                let etiquetasHerramientas = (datos.herramientas || [])
-                    .map(h => `<span style="background:#e9ecef; padding:3px 8px; border-radius:4px; font-size:0.75rem; margin-right:4px; display:inline-block; margin-bottom:3px;">${herramientasNombres[h] || h}</span>`)
-                    .join('');
-
-                if (datos.rol === 'superusuario') {
-                    etiquetasHerramientas = '<strong>👑 Acceso Total (Admin)</strong>';
-                }
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><strong>${id}</strong></td>
-                    <td>${datos.nombre}</td>
-                    <td>${etiquetasHerramientas}</td>
-                    <td>
-                        <div style="display: flex; gap: 6px;">
-                            <button class="btn-warning" onclick="editarUsuario('${id}')">Editar</button>
-                            ${id !== usuarioActual.username 
-                                ? `<button class="btn-danger" onclick="eliminarUsuario('${id}')">Eliminar</button>` 
-                                : `<span style="color:#6c757d; font-size:0.8rem; align-self:center;">(Tú)</span>`
-                            }
-                        </div>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            }
-            if (!tbody.hasChildNodes()) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#888">No hay funcionarios registrados.</td></tr>';
-            }
+            document.getElementById('stat-total').textContent = eventos.length;
+            document.getElementById('stat-logins-hoy').textContent = eventos.filter(e => e.accion === 'LOGIN' && e.timestamp.slice(0, 10) === hoy).length;
+            document.getElementById('stat-fallidos').textContent = eventos.filter(e => e.accion === 'INTENTO_FALLIDO').length;
+            document.getElementById('stat-eliminaciones').textContent = eventos.filter(e => e.accion === 'ELIMINAR').length;
         }
+
+        function limpiarFiltrosBitacora() {
+            document.getElementById('filtroUsuario').value = '';
+            document.getElementById('filtroModulo').value = '';
+            document.getElementById('filtroAccion').value = '';
+            document.getElementById('filtroDesde').value = '';
+            document.getElementById('filtroHasta').value = '';
+            document.getElementById('filtroTexto').value = '';
+            renderizarTablaBitacora();
+        }
+
+        function exportarCSV() {
+            const eventos = obtenerEventosFiltrados();
+            if (eventos.length === 0) { alert('No hay eventos para exportar con los filtros actuales.'); return; }
+
+            const encabezado = ['Fecha y Hora', 'Usuario', 'Nombre', 'Acción', 'Módulo', 'Detalle'];
+            const filas = eventos.map(e => [
+                formatearFecha(e.timestamp), e.usuario, e.nombre, ACCION_LABEL[e.accion] || e.accion, e.modulo, (e.detalle || '').replace(/"/g, '""')
+            ]);
+
+            const csv = [encabezado, ...filas]
+                .map(fila => fila.map(campo => `"${campo}"`).join(','))
+                .join('\n');
+
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `bitacora_auditoria_${new Date().toISOString().slice(0, 10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // ===== INIT =====
+        document.addEventListener('DOMContentLoaded', () => {
+            if (document.getElementById('mainContent').style.display === 'none') return;
+            poblarSelectsFiltro();
+            renderizarTablaBitacora();
+            actualizarStatsBitacora();
+        });
     </script>
 </body>
 </html>

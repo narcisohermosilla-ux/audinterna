@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auditoría Interna - Inventarios</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+    body { background: #0d1620; display: flex; flex-direction: column; height: 100vh; }
+    .topbar {
+      background: #1a252f;
+      color: white;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      border-bottom: 2px solid #0056b3;
+    }
+    .topbar h1 { font-size: 1rem; font-weight: 600; }
+    .badge {
+      background: #0056b3;
+      font-size: 0.68rem;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+    .btn-volver {
+      background: rgba(255,255,255,0.12);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.25);
+      padding: 7px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      text-decoration: none;
+    }
+    .btn-volver:hover { background: rgba(255,255,255,0.22); }
+    .frame-wrapper { flex: 1; overflow: hidden; }
+    iframe { width: 100%; height: 100%; border: none; display: block; }
+    .loading {
+      display: flex; align-items: center; justify-content: center;
+      height: 100%; color: #aaa; font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+  <script>
+    // Verificar sesión de la plataforma principal
+    const _sesionPlat = JSON.parse(sessionStorage.getItem('usuarioLogueado') || 'null');
+    if (!_sesionPlat) { window.location.href = 'login.html'; }
+
+    // Verificar acceso a esta herramienta
+    const _herrs = _sesionPlat ? (_sesionPlat.herramientas || []) : [];
+    const _esAdmin = _sesionPlat && (_sesionPlat.rol === 'admin' || _sesionPlat.rol === 'superusuario');
+    if (!_esAdmin && !_herrs.includes('audinterna')) {
+      alert('No tenés acceso a la herramienta de Auditoría Interna.');
+      window.location.href = 'index.html';
+    }
+  </script>
+
+  <div class="topbar">
+    <div style="display:flex; align-items:center;">
+      <h1>🔍 Auditoría Interna — Inventarios</h1>
+      <span class="badge">INTEGRADO</span>
+    </div>
+    <a href="index.html" class="btn-volver">← Volver al Panel Principal</a>
+  </div>
+
+  <div class="frame-wrapper">
+    <div class="loading" id="loadMsg">Cargando sistema...</div>
+    <iframe id="audFrame" src="" title="Sistema de Auditoría Interna" style="display:none;"></iframe>
+  </div>
+
+  <script>
+    // Pasar el token al sistema de auditoría via URL param
+    const _token = _sesionPlat ? _sesionPlat.token : '';
+    const _frame = document.getElementById('audFrame');
+    _frame.src = 'audinterna_app.html' + (_token ? '?token=' + encodeURIComponent(_token) : '');
+    _frame.onload = function() {
+      document.getElementById('loadMsg').style.display = 'none';
+      _frame.style.display = 'block';
+    };
+  </script>
+
+</body>
+</html>

@@ -3,26 +3,208 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plataforma Central de Auditoría</title>
+    <title>Matriz de Riesgos - Auditoría Interna</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root { --primary: #0d1620; --secondary: #2c3e50; --accent: #0056b3; --accent-light: #3d9bff; --background: #f4f6f9; --text: #333; --border: #dee2e6; }
+        :root {
+            --primary: #1a252f;
+            --accent: #0056b3;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --background: #f4f6f9;
+            --text: #333;
+            --border: #dee2e6;
+            --riesgo-bajo: #7ac74f;
+            --riesgo-medio: #f4d35e;
+            --riesgo-alto: #ee9b3a;
+            --riesgo-muyalto: #e63950;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { display: flex; min-height: 100vh; background-color: var(--background); color: var(--text); }
+        body { background: var(--background); color: var(--text); margin: 0 0 0 260px; padding: 24px; min-height: 100vh; }
 
-        /* Menú Lateral */
+        /* ===== Layout general (reutilizado del resto de la plataforma) ===== */
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .header h1 { font-size: 1.5rem; }
+        .header p { opacity: 0.85; font-size: 0.9rem; margin-top: 4px; }
+        .header-actions { display: flex; gap: 10px; }
+        .btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 10px 18px; border: none; border-radius: 6px;
+            font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: 0.2s;
+            text-decoration: none;
+        }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: #004494; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #1e7e34; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-outline { background: white; color: var(--accent); border: 1px solid var(--accent); }
+        .btn-outline:hover { background: #eef4fb; }
+        .btn-sm { padding: 6px 10px; font-size: 0.8rem; }
+
+        .section { background: white; padding: 25px; border-radius: 8px; margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .section-title { font-size: 1.15rem; color: var(--primary); margin-bottom: 18px; display: flex; align-items: center; gap: 10px; }
+
+        /* ===== Estadísticas ===== */
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; }
+        .stat {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            color: white; border-radius: 10px; padding: 18px 20px;
+        }
+        .stat h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.85; font-weight: 600; }
+        .stat .number { font-size: 2rem; font-weight: 700; margin-top: 4px; }
+
+        /* ===== Matriz de riesgos ===== */
+        .matriz-wrap { overflow-x: auto; }
+        .matriz-title-bar { text-align: center; margin-bottom: 18px; }
+        .matriz-title-bar h2 { color: var(--accent); font-size: 1.6rem; font-weight: 800; }
+        .matriz-title-bar span { display: block; color: #6c757d; letter-spacing: 3px; font-size: 0.85rem; font-weight: 600; margin-top: 4px; }
+
+        .matriz-grid {
+            display: grid;
+            grid-template-columns: 130px repeat(5, 1fr);
+            grid-template-rows: 60px repeat(5, 90px);
+            gap: 6px;
+            min-width: 820px;
+        }
+        .celda {
+            display: flex; align-items: center; justify-content: center;
+            text-align: center; border-radius: 6px; font-weight: 700;
+            font-size: 0.95rem; padding: 6px; position: relative;
+        }
+        .celda-corner {
+            background: var(--primary); color: white; font-size: 1.6rem;
+            display: flex; align-items: center; justify-content: center;
+            flex-direction: column;
+        }
+        .celda-header { background: #46505c; color: white; font-size: 0.75rem; letter-spacing: 0.5px; text-transform: uppercase; }
+        .celda-rowlabel {
+            background: #46505c; color: white; font-size: 0.72rem; letter-spacing: 0.3px;
+            text-transform: uppercase; text-align: left; padding-left: 14px; justify-content: flex-start;
+        }
+        .celda-riesgo { color: #1a1a1a; cursor: pointer; flex-direction: column; gap: 4px; transition: transform 0.15s, box-shadow 0.15s; }
+        .celda-riesgo:hover { transform: scale(1.035); box-shadow: 0 6px 16px rgba(0,0,0,0.18); z-index: 2; }
+        .celda-riesgo.filtro-activo { outline: 3px solid var(--primary); outline-offset: -3px; }
+        .celda-nivel { font-size: 0.95rem; }
+        .celda-badge {
+            background: rgba(0,0,0,0.25); color: white; font-size: 0.72rem; font-weight: 700;
+            border-radius: 20px; padding: 1px 9px; min-width: 20px;
+        }
+        .nivel-bajo { background: var(--riesgo-bajo); }
+        .nivel-medio { background: var(--riesgo-medio); }
+        .nivel-alto { background: var(--riesgo-alto); }
+        .nivel-muyalto { background: var(--riesgo-muyalto); color: white; }
+
+        .eje-y-label {
+            writing-mode: vertical-rl; transform: rotate(180deg);
+            color: var(--accent); font-weight: 700; letter-spacing: 3px; font-size: 0.85rem;
+            display: flex; align-items: center; justify-content: center; padding-right: 6px;
+        }
+        .matriz-con-eje { display: grid; grid-template-columns: 26px 1fr; }
+
+        .leyenda { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 18px; justify-content: center; }
+        .leyenda-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #495057; }
+        .leyenda-chip { width: 16px; height: 16px; border-radius: 4px; }
+
+        /* ===== Formulario ===== */
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 16px; }
+        .form-group label { display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 6px; color: #495057; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+            border-radius: 6px; font-size: 0.9rem; outline: none; transition: border-color 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
+        .form-group textarea { resize: vertical; min-height: 70px; }
+        .full-width { grid-column: 1 / -1; }
+        .nivel-preview { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 6px; font-weight: 700; color: #1a1a1a; }
+
+        /* ===== Tabla ===== */
+        .table-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: #f4f6f9; color: var(--primary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.4px; }
+        tr:hover { background: #f9fbfd; }
+        .badge-nivel { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; color: #1a1a1a; }
+        .badge-estado { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+        .estado-abierto { background: #fde2e2; color: #a12626; }
+        .estado-tratamiento { background: #fff3cd; color: #856404; }
+        .estado-mitigado { background: #d4edda; color: #1e7e34; }
+        .estado-cerrado { background: #e2e3e5; color: #495057; }
+        .empty-state { text-align: center; padding: 40px 20px; color: #adb5bd; }
+
+        .message { padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; display: none; font-size: 0.9rem; }
+        .message.show { display: block; }
+        .message.success { background: #d4edda; color: #1e7e34; border: 1px solid #c3e6cb; }
+        .message.error { background: #f8d7da; color: #a12626; border: 1px solid #f5c6cb; }
+
+        /* ===== Pestañas ===== */
+        .tabs-nav { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid var(--border); }
+        .tab-btn {
+            background: none; border: none; padding: 12px 20px; font-size: 0.92rem; font-weight: 600;
+            color: #6c757d; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px;
+            display: flex; align-items: center; gap: 8px; transition: all 0.2s;
+        }
+        .tab-btn:hover { color: var(--accent); }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+        .tab-panel { animation: fadeIn 0.2s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* ===== Cronograma por trimestre ===== */
+        .quarter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+        .quarter-card { background: #f4f6f9; border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+        .quarter-card h4 { color: var(--primary); font-size: 0.95rem; margin-bottom: 4px; }
+        .quarter-card .quarter-meses { color: #8a97a5; font-size: 0.75rem; margin-bottom: 12px; }
+        .quarter-card .quarter-count { font-size: 1.8rem; font-weight: 800; color: var(--accent); }
+        .quarter-card .quarter-label { font-size: 0.72rem; color: #8a97a5; text-transform: uppercase; letter-spacing: 0.4px; }
+        .quarter-progress { height: 6px; background: #e2e6ea; border-radius: 4px; margin-top: 10px; overflow: hidden; }
+        .quarter-progress-fill { height: 100%; background: var(--success); }
+
+        /* ===== Prioridad ===== */
+        .badge-prioridad { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; color: #1a1a1a; }
+        .prioridad-baja { background: var(--riesgo-bajo); }
+        .prioridad-media { background: var(--riesgo-medio); }
+        .prioridad-alta { background: var(--riesgo-alto); }
+        .prioridad-critica { background: var(--riesgo-muyalto); color: white; }
+
+        @media print {
+            body { margin: 0; background: white; }
+            .sidebar, .header-actions, #form-section, .table-toolbar button, .btn-eliminar, .celda-riesgo { cursor: default; }
+            .sidebar { display: none !important; }
+            .no-print { display: none !important; }
+        }
+        @media (max-width: 900px) {
+            body { margin-left: 0; padding: 14px; }
+            .sidebar { display: none; }
+        }
+
+        /* ===== Menú Lateral (Auditoría) ===== */
         .sidebar {
             width: 260px;
-            background: linear-gradient(180deg, #0f1c2b 0%, #16233299 100%), #10192447;
             background-color: #101924;
             color: white;
             padding: 24px 0;
             display: flex;
             flex-direction: column;
             position: fixed;
+            top: 0; left: 0;
             height: 100vh;
             box-shadow: 2px 0 24px rgba(0,0,0,0.35);
             overflow: hidden;
+            z-index: 100;
         }
         .sidebar::before {
             content: '';
@@ -43,7 +225,6 @@
             background: radial-gradient(circle at 30% 0%, rgba(0,86,179,0.35), transparent 60%);
             pointer-events: none;
         }
-
         .brand-logo {
             display: block;
             width: 128px;
@@ -56,14 +237,13 @@
         .sidebar-header { position: relative; z-index: 1; padding: 0 20px 22px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 20px; text-align: center; }
         .sidebar-header .logo-icon {
             width: 48px; height: 48px; border-radius: 12px;
-            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            background: linear-gradient(135deg, #0056b3, #3d9bff);
             display: flex; align-items: center; justify-content: center;
             margin: 0 auto 10px auto; font-size: 20px; color: white;
             box-shadow: 0 0 22px rgba(61,155,255,0.55);
         }
         .sidebar-header h2 { font-size: 1.25rem; letter-spacing: 2.5px; font-weight: 700; }
         .sidebar-header .subtitle { display: block; font-size: 0.68rem; color: #6f83a0; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 4px; }
-
         .nav-links { position: relative; z-index: 1; list-style: none; padding: 0 12px; flex: 1; }
         .nav-links li { margin-bottom: 4px; }
         .nav-links a {
@@ -74,63 +254,45 @@
         }
         .nav-links a i { width: 18px; text-align: center; font-size: 1rem; color: #57708f; transition: color 0.2s; }
         .nav-links a:hover { background: rgba(255,255,255,0.06); color: #fff; }
-        .nav-links a:hover i { color: var(--accent-light); }
+        .nav-links a:hover i { color: #3d9bff; }
         .nav-links a.active {
             background: linear-gradient(90deg, rgba(0,86,179,0.30), rgba(0,86,179,0.03));
-            color: #fff; border-left: 3px solid var(--accent-light);
+            color: #fff; border-left: 3px solid #3d9bff;
             box-shadow: inset 0 0 24px rgba(0,86,179,0.18);
         }
-        .nav-links a.active i { color: var(--accent-light); }
+        .nav-links a.active i { color: #3d9bff; }
         .sidebar-footer { position: relative; z-index: 1; padding: 14px 20px 0 20px; border-top: 1px solid rgba(255,255,255,0.08); }
-        .credito-dev { margin-top: 6px; font-size: 0.66rem; color: #46536a; text-align: center; letter-spacing: 0.3px; }
-
-        /* Contenido */
-        .main-content { flex: 1; padding: 30px; margin-left: 260px; }
-        
-        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; background: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); }
-        .header-top h1 { font-size: 1.5rem; color: var(--primary); }
-        .user-profile { text-align: right; }
-        .user-profile strong { color: var(--accent); display: block; font-size: 1rem;}
-        .btn-logout { background-color: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; margin-top: 5px; cursor: pointer; font-size: 0.85rem; font-weight: bold; }
-
-        /* Vistas / Pestañas */
-        .view-section { display: none; animation: fadeIn 0.3s; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        
-        .category-header { font-size: 1.3rem; color: var(--primary); margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid var(--accent); }
-        
-        .tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
-        .tool-card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-top: 4px solid var(--secondary); display: flex; flex-direction: column; }
-        .tool-card h3 { margin-bottom: 8px; color: var(--primary); }
-        .tool-card p { color: #6c757d; font-size: 0.9rem; margin-bottom: 20px; flex-grow: 1; }
-        .btn { display: block; background-color: var(--secondary); color: white; padding: 10px; text-decoration: none; border-radius: 4px; text-align: center; font-weight: bold; transition: 0.2s; }
-        .btn:hover { background-color: var(--primary); }
-
-        /* Módulo de Configuración */
-        .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
-        .config-card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .config-card h3 { margin-bottom: 20px; color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 10px; }
-        
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9rem; color: #495057; }
-        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 4px; }
-        
-        .checkbox-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 5px; }
-        .checkbox-group label { font-weight: normal; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; cursor: pointer; }
-
-        .btn-action { background-color: var(--accent); color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; }
-        .btn-action:hover { background-color: #004494; }
-        .btn-danger { background-color: #dc3545; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
-        .btn-warning { background-color: #ffc107; color: #212529; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold; }
-
-        /* Tabla de usuarios */
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
-        th { background-color: #f8f9fa; color: var(--primary); }
-        
-        /* Ocultar elementos según rol */
-        .admin-only { display: none; }
+        .sidebar-footer a { color: #93a2b8; text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 10px; padding: 8px 4px; transition: color 0.2s; }
+        .sidebar-footer a:hover { color: #ff6b6b; }
+        .credito-dev { margin-top: 10px; font-size: 0.66rem; color: #46536a; text-align: center; letter-spacing: 0.3px; }
     </style>
+
+    <!-- ── Integración Supabase ──────────────────────────────── -->
+    <script>
+      const _SUPA_URL = 'https://rklqmqofnsaafcfwuoxf.supabase.co/functions/v1/api';
+      function _getToken() {
+        const s = JSON.parse(sessionStorage.getItem('usuarioLogueado') || 'null');
+        return s ? s.token : null;
+      }
+      async function apiPost(action, params = {}) {
+        const token = _getToken();
+        const res = await fetch(_SUPA_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, token, ...params })
+        });
+        return res.json();
+      }
+      function _logBitacora(accion, modulo, detalle) {
+        apiPost('log', { accion, modulo, detalle: detalle || '' }).catch(()=>{});
+      }
+      // Verificar sesión al cargar
+      (function() {
+        const s = sessionStorage.getItem('usuarioLogueado');
+        if (!s) { window.location.href = 'login.html'; }
+      })();
+    </script>
+
 </head>
 <body>
 
@@ -142,514 +304,908 @@
             <span class="subtitle">Plataforma Corporativa</span>
         </div>
         <ul class="nav-links">
-            <li id="menu-logistico" style="display: none;"><a onclick="cambiarVista('logistico')"><i class="fa-solid fa-boxes-packing"></i> Centro Logístico</a></li>
-            <li id="menu-ventas" style="display: none;"><a onclick="cambiarVista('ventas')"><i class="fa-solid fa-store"></i> Puntos de Ventas</a></li>
-            <li id="menu-financiera" style="display: none;"><a onclick="cambiarVista('financiera')"><i class="fa-solid fa-chart-line"></i> Financiera Contable</a></li>
-            <li id="menu-equipo" style="display: none;"><a onclick="cambiarVista('equipo')"><i class="fa-solid fa-sitemap"></i> Gestión de Equipo</a></li>
-            <li id="menu-activos" style="display: none;"><a onclick="cambiarVista('activos')"><i class="fa-solid fa-laptop"></i> Control de Activos</a></li>
-            <li id="menu-seguridad" style="display: none;"><a onclick="cambiarVista('seguridad')"><i class="fa-solid fa-shield-halved"></i> Seguridad & Monitoreo</a></li>
-            <li id="menu-riesgos" style="display: none;"><a onclick="cambiarVista('riesgos')"><i class="fa-solid fa-chess-board"></i> Matriz de Riesgos</a></li>
+            <li id="menu-logistico" style="display: none;"><a href="index.html?vista=logistico"><i class="fa-solid fa-boxes-packing"></i> Centro Logístico</a></li>
+            <li id="menu-ventas" style="display: none;"><a href="index.html?vista=ventas"><i class="fa-solid fa-store"></i> Puntos de Ventas</a></li>
+            <li id="menu-financiera" style="display: none;"><a href="index.html?vista=financiera"><i class="fa-solid fa-chart-line"></i> Financiera Contable</a></li>
+            <li id="menu-equipo" style="display: none;"><a href="organigrama.html"><i class="fa-solid fa-sitemap"></i> Gestión de Equipo</a></li>
+            <li id="menu-activos" style="display: none;"><a href="control_activos.html"><i class="fa-solid fa-laptop"></i> Control de Activos</a></li>
+            <li id="menu-seguridad" style="display: none;"><a href="index.html?vista=seguridad"><i class="fa-solid fa-shield-halved"></i> Seguridad & Monitoreo</a></li>
+            <li id="menu-riesgos" style="display: none;"><a href="matriz_riesgos.html" class="active"><i class="fa-solid fa-chess-board"></i> Matriz de Riesgos</a></li>
             <li id="menu-bitacora" style="display: none;"><a href="bitacora_auditoria.html"><i class="fa-solid fa-clipboard-list"></i> Bitácora de Auditoría</a></li>
-            <li id="menu-configuracion"><a onclick="cambiarVista('configuracion')"><i class="fa-solid fa-gear"></i> Configuración</a></li>
+            <li id="menu-configuracion"><a href="index.html?vista=configuracion"><i class="fa-solid fa-gear"></i> Configuración</a></li>
         </ul>
         <div class="sidebar-footer">
+            <a onclick="cerrarSesionSidebar()"><i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión</a>
             <div class="credito-dev">Desarrollado por Narciso Hermosilla</div>
         </div>
     </nav>
 
-    <main class="main-content">
-        
-        <header class="header-top">
-            <div>
-                <h1 id="titulo-seccion">Bienvenido al Sistema</h1>
-            </div>
-            <div class="user-profile">
-                <span id="rol-usuario-texto">Auditor</span>
-                <strong id="nombre-usuario">Cargando...</strong>
-                <button class="btn-logout" onclick="cerrarSesion()">Cerrar Sesión</button>
-            </div>
-        </header>
-
-        <!-- VISTA: CENTRO LOGÍSTICO -->
-        <section id="logistico" class="view-section">
-            <h2 class="category-header">Módulos de Centro Logístico</h2>
-            <div class="tools-grid">
-                <div class="tool-card" style="border-left: 4px solid #0056b3;">
-                    <h3>🔍 Auditoría Interna — Inventarios</h3>
-                    <p>Sistema completo de actas de inventario, arqueos, auditorías con checklist, planes de seguimiento y firma digital por PDV.</p>
-                    <a href="auditoria.html" class="btn" style="background:#0056b3;">Abrir Sistema</a>
-                </div>
-                <div class="tool-card">
-                    <h3>Control de Entradas</h3>
-                    <p>Auditoría de recepción de mercadería y cruce con remisiones de fábrica.</p>
-                    <a href="#" class="btn" style="opacity:0.5;cursor:not-allowed;">Próximamente</a>
-                </div>
-            </div>
-        </section>
-
-        <!-- VISTA: PUNTOS DE VENTAS -->
-        <section id="ventas" class="view-section">
-            <h2 class="category-header">Módulos de Puntos de Ventas</h2>
-            <div class="tools-grid">
-                <div class="tool-card">
-                    <h3>Inspección y Cumplimiento</h3>
-                    <p>Checklist para auditoría de sucursales, control de cajas y POS.</p>
-                    <a href="checklist_cumplimiento.html" class="btn">Abrir Herramienta</a>
-                </div>
-                <div class="tool-card">
-                    <h3>Arqueo de Valores</h3>
-                    <p>Arqueo de caja y control de cajero, con historial, diferencias (vale/pagaré) y gráficos por PDV.</p>
-                    <a href="arqueo_valores.html" class="btn">Abrir Herramienta</a>
-                </div>
-            </div>
-        </section>
-
-        <!-- VISTA: FINANCIERA CONTABLE -->
-        <section id="financiera" class="view-section">
-            <h2 class="category-header">Módulos de Financiera Contable</h2>
-            <div class="tools-grid">
-                <div class="tool-card">
-                    <h3>Cronograma de Recuperación</h3>
-                    <p>Control de flujo de caja y saldos pendientes.</p>
-                    <a href="#" class="btn">Abrir Herramienta</a>
-                </div>
-                <div class="tool-card">
-                    <h3>Gestión de Tareas de Auditoría</h3>
-                    <p>Seguimiento por persona, periodicidad, etapas, tiempos y cumplimiento.</p>
-                    <a href="gestion_tareas.html" class="btn">Abrir Herramienta</a>
-                </div>
-                <div class="tool-card">
-                    <h3>Control de Reformas de Obras y Proyectos</h3>
-                    <p>Checklist de reformas y proyectos por sucursal, con resumen valorizado.</p>
-                    <a href="control_reformas.html" class="btn">Abrir Herramienta</a>
-                </div>
-                <div class="tool-card">
-                    <h3>Control de IP de Sucursales</h3>
-                    <p>Verificación de acceso web y credenciales locales por sucursal.</p>
-                    <a href="control_ip.html" class="btn">Abrir Herramienta</a>
-                </div>
-                <div class="tool-card">
-                    <h3>Planificador de Rutas</h3>
-                    <p>Organización de rutas y ubicaciones de sucursales para visitas de auditoría.</p>
-                    <a href="planificador_rutas.html" class="btn">Abrir Herramienta</a>
-                </div>
-            </div>
-        </section>
-
-        <!-- VISTA: GESTIÓN DE EQUIPO -->
-        <section id="equipo" class="view-section">
-            <h2 class="category-header">Gestión de Equipo y Recursos</h2>
-            <div class="tools-grid">
-                <div class="tool-card">
-                    <h3>Organigrama de Auditoría</h3>
-                    <p>Módulo para visualizar la estructura del departamento, jerarquías y dependencias del personal.</p>
-                    <a href="organigrama.html" class="btn">Abrir Herramienta</a>
-                </div>
-            </div>
-        </section>
-
-        <!-- VISTA: CONTROL DE ACTIVOS -->
-        <section id="activos" class="view-section">
-            <h2 class="category-header">Control de Activos Tecnológicos</h2>
-            <div class="tools-grid">
-                <div class="tool-card">
-                    <h3>Registro y Transferencia</h3>
-                    <p>Módulo de auditoría para la asignación, consulta y gestión de equipos informáticos.</p>
-                    <a href="control_activos.html" class="btn">Abrir Herramienta</a>
-                </div>
-            </div>
-        </section>
-
-        <!-- VISTA: SEGURIDAD & MONITOREO (NUEVO) -->
-        <section id="seguridad" class="view-section">
-            <h2 class="category-header">Seguridad & Monitoreo Operativo</h2>
-            <div class="tools-grid">
-                <div class="tool-card">
-                    <h3>Auditoría de Accesos y Cámaras</h3>
-                    <p>Control de registros de seguridad, revisión de cámaras en sucursales y alertas de eventos críticos.</p>
-                    <a href="#" class="btn">Abrir Herramienta</a>
-                </div>
-            </div>
-        </section>
-
-        <!-- VISTA: MATRIZ DE RIESGOS -->
-        <section id="riesgos" class="view-section">
-            <h2 class="category-header">Matriz de Riesgos</h2>
-            <div class="tools-grid">
-                <div class="tool-card">
-                    <h3>Matriz de Riesgos</h3>
-                    <p>Identificación y evaluación de riesgos de auditoría, con matriz probabilidad × impacto interactiva.</p>
-                    <a href="matriz_riesgos.html" class="btn">Abrir Herramienta</a>
-                </div>
-            </div>
-        </section>
-
-        <!-- VISTA: CONFIGURACIÓN -->
-        <section id="configuracion" class="view-section">
-            <h2 class="category-header">Configuración del Sistema</h2>
-            
-            <div class="config-grid">
-                
-                <!-- Módulo de Cambio de Contraseña -->
-                <div class="config-card">
-                    <h3>Cambio de Contraseña</h3>
-                    <div class="form-group">
-                        <label>Contraseña Actual</label>
-                        <input type="password" id="pass-actual" placeholder="Ingrese contraseña actual">
-                    </div>
-                    <div class="form-group">
-                        <label>Nueva Contraseña</label>
-                        <input type="password" id="pass-nueva" placeholder="Ingrese nueva contraseña">
-                    </div>
-                    <button class="btn-action" onclick="cambiarContrasenaPerfil()">Actualizar Contraseña</button>
-                    <p id="msg-pass" style="margin-top: 10px; display: none; font-size: 0.9rem;"></p>
-                </div>
-
-                <!-- SOLO ADMIN: Gestión, Edición y Eliminación de Funcionarios / Usuarios -->
-                <div class="config-card admin-only" id="panel-admin" style="grid-column: span 2;">
-                    <h3 id="form-titulo-modo">Crear Nuevo Funcionario</h3>
-                    
-                    <form id="form-usuario" onsubmit="guardarUsuario(event)" style="background: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 25px;">
-                        <input type="hidden" id="modo-edicion" value="crear">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                            <div class="form-group"><label>ID Usuario</label><input type="text" id="crear-id" placeholder="Ej: jcarlos" required></div>
-                            <div class="form-group"><label>Nombre Completo</label><input type="text" id="crear-nombre" placeholder="Nombre y Apellido" required></div>
-                            <div class="form-group"><label>Contraseña</label><input type="password" id="crear-pass" placeholder="Contraseña" required></div>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Asignar Herramientas / Módulos permitidos:</label>
-                            <div class="checkbox-group">
-                                <label><input type="checkbox" name="herramientas" value="logistico"> 📦 Centro Logístico</label>
-                                <label><input type="checkbox" name="herramientas" value="audinterna"> 🔍 Auditoría Interna (Inventarios)</label>
-                                <label><input type="checkbox" name="herramientas" value="ventas"> 🏪 Puntos de Ventas</label>
-                                <label><input type="checkbox" name="herramientas" value="financiera"> 📊 Financiera Contable</label>
-                                <label><input type="checkbox" name="herramientas" value="equipo"> 👥 Gestión de Equipo</label>
-                                <label><input type="checkbox" name="herramientas" value="activos"> 💻 Control de Activos</label>
-                                <label><input type="checkbox" name="herramientas" value="seguridad"> 🔒 Seguridad & Monitoreo</label>
-                                <label><input type="checkbox" name="herramientas" value="riesgos"> 🎯 Matriz de Riesgos</label>
-                            </div>
-                        </div>
-                        <div style="display: flex; gap: 10px; margin-top: 10px;">
-                            <button type="submit" class="btn-action" id="btn-guardar-usuario">Registrar Funcionario</button>
-                            <button type="button" class="btn-secondary" id="btn-cancelar-edicion" style="display: none; padding: 10px 15px; border: 1px solid #ccc; background: #e2e8f0; border-radius: 4px; cursor: pointer; font-weight: bold;" onclick="cancelarEdicion()">Cancelar</button>
-                        </div>
-                    </form>
-
-                    <h4>Funcionarios Registrados</h4>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Nombre</th>
-                                <th>Herramientas Asignadas</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabla-usuarios">
-                            <!-- Se llena con JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-
-            </div>
-        </section>
-
-    </main>
-
     <script>
-        // ── Configuración Supabase ──────────────────────────────────────────
-        const SUPABASE_URL = 'https://rklqmqofnsaafcfwuoxf.supabase.co/functions/v1/api';
-
-        function getToken() {
-            const s = JSON.parse(sessionStorage.getItem('usuarioLogueado') || 'null');
-            return s ? s.token : null;
-        }
-
-        async function apiPost(action, params = {}) {
-            const token = getToken();
-            const res = await fetch(SUPABASE_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action, token, ...params })
-            });
-            return res.json();
-        }
-
-        let usuarioActual = null;
-        let dbLocal = {};
-
-        document.addEventListener('DOMContentLoaded', async () => {
+        (function() {
             const userData = sessionStorage.getItem('usuarioLogueado');
             if (!userData) { window.location.href = 'login.html'; return; }
-
-            usuarioActual = JSON.parse(userData);
-
-            // Validar token contra Supabase
-            try {
-                const v = await apiPost('validarSesion');
-                if (!v || !v.ok) {
-                    sessionStorage.removeItem('usuarioLogueado');
-                    window.location.href = 'login.html';
-                    return;
-                }
-            } catch(e) {
-                // Si no hay conexión, continuar con la sesión local
-                console.warn('Sin conexión para validar sesión:', e);
+            const usuario = JSON.parse(userData);
+            if (usuario.username === 'admin' && !usuario.herramientas) {
+                usuario.herramientas = ['logistico', 'ventas', 'financiera', 'equipo', 'activos', 'seguridad', 'riesgos'];
             }
-
-            document.getElementById('nombre-usuario').textContent = usuarioActual.nombre;
-            const esAdmin = usuarioActual.rol === 'admin' || usuarioActual.rol === 'superusuario';
-            document.getElementById('rol-usuario-texto').textContent = esAdmin ? 'Administrador' : 'Auditor';
-
-            if (esAdmin && !usuarioActual.herramientas) {
-                usuarioActual.herramientas = ['logistico', 'audinterna', 'ventas', 'financiera', 'equipo', 'activos', 'seguridad', 'riesgos'];
-            }
-
-            const herramientasPermitidas = usuarioActual.herramientas || [];
-
-            herramientasPermitidas.forEach(herramienta => {
-                const menuEl = document.getElementById('menu-' + herramienta);
-                if (menuEl) menuEl.style.display = 'block';
+            (usuario.herramientas || []).forEach(h => {
+                const el = document.getElementById('menu-' + h);
+                if (el) el.style.display = 'block';
             });
-
-            if (esAdmin) {
-                document.getElementById('panel-admin').classList.remove('admin-only');
-                await renderizarTablaUsuarios();
-                const menuBitacora = document.getElementById('menu-bitacora');
-                if (menuBitacora) menuBitacora.style.display = 'block';
+            if (usuario.rol === 'superusuario') {
+                const elBitacora = document.getElementById('menu-bitacora');
+                if (elBitacora) elBitacora.style.display = 'block';
             }
+        })();
 
-            // Registrar acceso en Supabase
-            apiPost('log', { accion: 'ACCESO', modulo: 'Dashboard', detalle: 'Acceso al panel principal' }).catch(()=>{});
-
-            const vistaParam = new URLSearchParams(window.location.search).get('vista');
-            if (vistaParam === 'configuracion') {
-                cambiarVista('configuracion');
-            } else if (vistaParam && herramientasPermitidas.includes(vistaParam)) {
-                cambiarVista(vistaParam);
-            } else if (herramientasPermitidas.length > 0) {
-                cambiarVista(herramientasPermitidas[0]);
-            } else {
-                cambiarVista('configuracion');
-            }
-        });
-
-        function cambiarVista(idVista) {
-            // Si es audinterna, abrir directamente la herramienta
-            if (idVista === 'audinterna') {
-                window.location.href = 'auditoria.html';
-                return;
-            }
-            document.querySelectorAll('.view-section').forEach(sec => sec.style.display = 'none');
-            document.querySelectorAll('.nav-links a').forEach(link => link.classList.remove('active'));
-            
-            document.getElementById(idVista).style.display = 'block';
-            const linkActivo = document.querySelector(`.nav-links a[onclick="cambiarVista('${idVista}')"]`);
-            if(linkActivo) linkActivo.classList.add('active');
-
-            const titulos = {
-                'logistico': 'Centro Logístico',
-                'audinterna': 'Auditoría Interna',
-                'ventas': 'Puntos de Ventas',
-                'financiera': 'Financiera Contable',
-                'equipo': 'Gestión de Equipo',
-                'activos': 'Control de Activos',
-                'seguridad': 'Seguridad & Monitoreo',
-                'riesgos': 'Matriz de Riesgos',
-                'configuracion': 'Configuración del Sistema'
-            };
-            document.getElementById('titulo-seccion').textContent = titulos[idVista] || 'Configuración';
-        }
-
-        // ===== Bitácora de Auditoría del Sistema → Supabase =====
+        // ===== Bitácora de Auditoría del Sistema =====
         function registrarBitacora(accion, modulo, detalle) {
-            apiPost('log', { accion, modulo, detalle: detalle || '' }).catch(() => {});
+            try {
+                const sesion = JSON.parse(sessionStorage.getItem('usuarioLogueado') || 'null');
+                const entrada = {
+                    id: Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+                    timestamp: new Date().toISOString(),
+                    usuario: sesion ? sesion.username : 'desconocido',
+                    nombre: sesion ? sesion.nombre : 'Desconocido',
+                    accion: accion,
+                    modulo: modulo,
+                    detalle: detalle || ''
+                };
+                const bitacora = JSON.parse(localStorage.getItem('bitacoraAuditoria') || '[]');
+                bitacora.push(entrada);
+                if (bitacora.length > 3000) bitacora.splice(0, bitacora.length - 3000);
+                localStorage.setItem('bitacoraAuditoria', JSON.stringify(bitacora));
+            } catch (e) { console.error('Error registrando bitácora:', e); }
         }
 
-        async function cerrarSesion() {
-            try { await apiPost('logout'); } catch(e) {}
+        function cerrarSesionSidebar() {
+            registrarBitacora('LOGOUT', 'Matriz de Riesgos', 'Cierre de sesión');
             sessionStorage.removeItem('usuarioLogueado');
             window.location.href = 'login.html';
         }
+        function irAlDashboard() { window.location.href = 'index.html'; }
+    </script>
 
-        async function cambiarContrasenaPerfil() {
-            const actual = document.getElementById('pass-actual').value;
-            const nueva  = document.getElementById('pass-nueva').value;
-            const msg    = document.getElementById('msg-pass');
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1><i class="fa-solid fa-diagram-project"></i> Matriz de Riesgos</h1>
+                <p>Identificación y evaluación de riesgos de auditoría interna</p>
+            </div>
+            <div class="header-actions no-print">
+                <button class="btn btn-outline" onclick="window.print()"><i class="fa-solid fa-print"></i> Imprimir</button>
+                <button class="btn btn-primary" onclick="irAlDashboard()"><i class="fa-solid fa-house"></i> Dashboard</button>
+            </div>
+        </div>
 
-            if (nueva.length < 4) {
-                msg.textContent = 'La nueva contraseña debe tener al menos 4 caracteres.';
-                msg.style.color = 'red'; msg.style.display = 'block'; return;
-            }
-            try {
-                const r = await apiPost('changePassword', { currentPassword: actual, newPassword: nueva });
-                if (r && r.ok) {
-                    msg.textContent = 'Contraseña actualizada con éxito.';
-                    msg.style.color = 'green';
-                    document.getElementById('pass-actual').value = '';
-                    document.getElementById('pass-nueva').value = '';
-                } else {
-                    msg.textContent = r && r.error ? r.error : 'Contraseña actual incorrecta.';
-                    msg.style.color = 'red';
-                }
-            } catch(e) {
-                msg.textContent = 'Error de conexión.';
-                msg.style.color = 'red';
-            }
-            msg.style.display = 'block';
-            setTimeout(() => msg.style.display = 'none', 3500);
+        <!-- PESTAÑAS -->
+        <div class="tabs-nav no-print">
+            <button class="tab-btn active" id="tabBtn-matriz" onclick="cambiarTab('matriz')"><i class="fa-solid fa-chess-board"></i> Matriz de Riesgos</button>
+            <button class="tab-btn" id="tabBtn-plan" onclick="cambiarTab('plan')"><i class="fa-solid fa-calendar-check"></i> Plan Anual de Auditoría</button>
+        </div>
+
+        <div id="tabPanel-matriz" class="tab-panel">
+        <!-- ESTADÍSTICAS -->
+        <div class="section">
+            <div class="stats">
+                <div class="stat">
+                    <h3>Riesgos Registrados</h3>
+                    <div class="number" id="stat-total">0</div>
+                </div>
+                <div class="stat" style="background: linear-gradient(135deg, #a12626 0%, #e63950 100%);">
+                    <h3>Críticos (Alto / Muy Alto)</h3>
+                    <div class="number" id="stat-criticos">0</div>
+                </div>
+                <div class="stat" style="background: linear-gradient(135deg, #856404 0%, #ffc107 100%);">
+                    <h3>Abiertos / En Tratamiento</h3>
+                    <div class="number" id="stat-abiertos">0</div>
+                </div>
+                <div class="stat" style="background: linear-gradient(135deg, #1e7e34 0%, #28a745 100%);">
+                    <h3>Mitigados / Cerrados</h3>
+                    <div class="number" id="stat-mitigados">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="message" class="message"></div>
+
+        <!-- MATRIZ -->
+        <div class="section">
+            <div class="matriz-title-bar">
+                <h2>Matriz de Riesgos</h2>
+                <span>IMPACTO O CONSECUENCIAS</span>
+            </div>
+            <div class="matriz-wrap">
+                <div class="matriz-con-eje">
+                    <div class="eje-y-label">PROBABILIDAD DE QUE OCURRA</div>
+                    <div id="matrizGrid" class="matriz-grid"></div>
+                </div>
+            </div>
+            <div class="leyenda">
+                <div class="leyenda-item"><span class="leyenda-chip nivel-bajo"></span> Bajo</div>
+                <div class="leyenda-item"><span class="leyenda-chip nivel-medio"></span> Medio</div>
+                <div class="leyenda-item"><span class="leyenda-chip nivel-alto"></span> Alto</div>
+                <div class="leyenda-item"><span class="leyenda-chip nivel-muyalto"></span> Muy Alto</div>
+                <div class="leyenda-item no-print" id="filtroActivoTxt" style="display:none; font-weight: 600; color: var(--primary); cursor:pointer;" onclick="limpiarFiltro()">
+                    <i class="fa-solid fa-filter-circle-xmark"></i> <span id="filtroActivoLabel"></span> — quitar filtro
+                </div>
+            </div>
+        </div>
+
+        <!-- FORMULARIO -->
+        <div class="section no-print" id="form-section">
+            <h3 class="section-title"><i class="fa-solid fa-plus"></i> <span id="form-title-text">Registrar Nuevo Riesgo</span></h3>
+            <form id="riesgoForm" onsubmit="guardarRiesgo(event)">
+                <input type="hidden" id="riesgo-id">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label>Nombre / Descripción del riesgo *</label>
+                        <input type="text" id="riesgo-nombre" placeholder="Ej: Faltante de caja no justificado en PDV" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Categoría / Área *</label>
+                        <select id="riesgo-categoria" required>
+                            <option value="">Seleccionar...</option>
+                            <option value="Centro Logístico">📦 Centro Logístico</option>
+                            <option value="Puntos de Ventas">🏪 Puntos de Ventas</option>
+                            <option value="Financiera Contable">📊 Financiera Contable</option>
+                            <option value="Gestión de Equipo">👥 Gestión de Equipo</option>
+                            <option value="Control de Activos">💻 Control de Activos</option>
+                            <option value="Seguridad & Monitoreo">🔒 Seguridad & Monitoreo</option>
+                            <option value="General">🏢 General / Corporativo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Responsable</label>
+                        <input type="text" id="riesgo-responsable" placeholder="Nombre del responsable">
+                    </div>
+                    <div class="form-group">
+                        <label>Probabilidad *</label>
+                        <select id="riesgo-probabilidad" required onchange="previsualizarNivel()">
+                            <option value="">Seleccionar...</option>
+                            <option value="1">1 - Raro</option>
+                            <option value="2">2 - Poco Probable</option>
+                            <option value="3">3 - Posible</option>
+                            <option value="4">4 - Muy Probable</option>
+                            <option value="5">5 - Casi Seguro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Impacto *</label>
+                        <select id="riesgo-impacto" required onchange="previsualizarNivel()">
+                            <option value="">Seleccionar...</option>
+                            <option value="1">1 - Insignificante</option>
+                            <option value="2">2 - Menor</option>
+                            <option value="3">3 - Moderado</option>
+                            <option value="4">4 - Mayor</option>
+                            <option value="5">5 - Catastrófico</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nivel resultante</label>
+                        <div id="nivelPreview">Seleccioná probabilidad e impacto</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Estado</label>
+                        <select id="riesgo-estado">
+                            <option value="Abierto">Abierto</option>
+                            <option value="En tratamiento">En tratamiento</option>
+                            <option value="Mitigado">Mitigado</option>
+                            <option value="Cerrado">Cerrado</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha de identificación</label>
+                        <input type="date" id="riesgo-fecha">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Plan de mitigación / Acción correctiva</label>
+                        <textarea id="riesgo-plan" placeholder="Medidas para reducir la probabilidad o el impacto de este riesgo..."></textarea>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success"><i class="fa-solid fa-floppy-disk"></i> <span id="form-btn-text">Guardar Riesgo</span></button>
+                <button type="button" class="btn btn-outline" id="btn-cancelar-edicion" style="display:none;" onclick="cancelarEdicion()">Cancelar edición</button>
+            </form>
+        </div>
+
+        <!-- TABLA -->
+        <div class="section">
+            <div class="table-toolbar">
+                <h3 class="section-title" style="margin-bottom:0;"><i class="fa-solid fa-list"></i> Riesgos Registrados</h3>
+                <input type="text" id="buscarRiesgo" placeholder="Buscar por nombre, categoría o responsable..." style="padding:8px 12px; border:1px solid var(--border); border-radius:6px; min-width:260px;" oninput="renderizarTabla()">
+            </div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Riesgo</th>
+                            <th>Categoría</th>
+                            <th>Probabilidad</th>
+                            <th>Impacto</th>
+                            <th>Nivel</th>
+                            <th>Responsable</th>
+                            <th>Estado</th>
+                            <th class="no-print">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaRiesgos"></tbody>
+                </table>
+            </div>
+            <div id="emptyState" class="empty-state" style="display:none;">
+                <i class="fa-solid fa-shield-halved" style="font-size:2rem; margin-bottom:10px; display:block;"></i>
+                Todavía no hay riesgos registrados. Usá el formulario de arriba para cargar el primero.
+            </div>
+        </div>
+        </div> <!-- /tabPanel-matriz -->
+
+        <div id="tabPanel-plan" class="tab-panel" style="display:none;">
+            <!-- ESTADÍSTICAS DEL PLAN -->
+            <div class="section">
+                <div class="stats">
+                    <div class="stat">
+                        <h3>Auditorías Planificadas</h3>
+                        <div class="number" id="plan-stat-total">0</div>
+                    </div>
+                    <div class="stat" style="background: linear-gradient(135deg, #856404 0%, #ffc107 100%);">
+                        <h3>Planificadas / En Curso</h3>
+                        <div class="number" id="plan-stat-pendientes">0</div>
+                    </div>
+                    <div class="stat" style="background: linear-gradient(135deg, #1e7e34 0%, #28a745 100%);">
+                        <h3>Completadas</h3>
+                        <div class="number" id="plan-stat-completadas">0</div>
+                    </div>
+                    <div class="stat" style="background: linear-gradient(135deg, #a12626 0%, #e63950 100%);">
+                        <h3>Prioridad Crítica / Alta</h3>
+                        <div class="number" id="plan-stat-criticas">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="planMessage" class="message"></div>
+
+            <!-- RESUMEN POR TRIMESTRE -->
+            <div class="section">
+                <h3 class="section-title"><i class="fa-solid fa-calendar-days"></i> Cronograma por Trimestre</h3>
+                <div class="quarter-grid" id="quarterGrid"></div>
+            </div>
+
+            <!-- FORMULARIO DE PLANIFICACIÓN -->
+            <div class="section no-print">
+                <h3 class="section-title"><i class="fa-solid fa-plus"></i> <span id="plan-form-title-text">Planificar Nueva Auditoría</span></h3>
+                <form id="planForm" onsubmit="guardarPlan(event)">
+                    <input type="hidden" id="plan-id">
+                    <div class="form-grid">
+                        <div class="form-group full-width">
+                            <label>Actividad / Alcance de la auditoría *</label>
+                            <input type="text" id="plan-actividad" placeholder="Ej: Auditoría de cumplimiento normativo - Sucursales zona sur" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Categoría / Área *</label>
+                            <select id="plan-categoria" required>
+                                <option value="">Seleccionar...</option>
+                                <option value="Centro Logístico">📦 Centro Logístico</option>
+                                <option value="Puntos de Ventas">🏪 Puntos de Ventas</option>
+                                <option value="Financiera Contable">📊 Financiera Contable</option>
+                                <option value="Gestión de Equipo">👥 Gestión de Equipo</option>
+                                <option value="Control de Activos">💻 Control de Activos</option>
+                                <option value="Seguridad & Monitoreo">🔒 Seguridad & Monitoreo</option>
+                                <option value="General">🏢 General / Corporativo</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Riesgo asociado (opcional)</label>
+                            <select id="plan-riesgo" onchange="autocompletarDesdeRiesgo()">
+                                <option value="">Sin riesgo asociado</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Equipo / Auditor asignado *</label>
+                            <select id="plan-auditor" required>
+                                <option value="">Seleccionar...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Trimestre planificado *</label>
+                            <select id="plan-trimestre" required>
+                                <option value="">Seleccionar...</option>
+                                <option value="Q1">Q1 · Enero - Marzo</option>
+                                <option value="Q2">Q2 · Abril - Junio</option>
+                                <option value="Q3">Q3 · Julio - Septiembre</option>
+                                <option value="Q4">Q4 · Octubre - Diciembre</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha estimada</label>
+                            <input type="date" id="plan-fecha">
+                        </div>
+                        <div class="form-group">
+                            <label>Prioridad</label>
+                            <select id="plan-prioridad">
+                                <option value="Baja">Baja</option>
+                                <option value="Media">Media</option>
+                                <option value="Alta">Alta</option>
+                                <option value="Crítica">Crítica</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Estado</label>
+                            <select id="plan-estado">
+                                <option value="Planificado">Planificado</option>
+                                <option value="En curso">En curso</option>
+                                <option value="Completado">Completado</option>
+                                <option value="Reprogramado">Reprogramado</option>
+                            </select>
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Notas / Alcance adicional</label>
+                            <textarea id="plan-notas" placeholder="Observaciones, objetivos específicos o alcance de esta auditoría..."></textarea>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success"><i class="fa-solid fa-floppy-disk"></i> <span id="plan-form-btn-text">Guardar Planificación</span></button>
+                    <button type="button" class="btn btn-outline" id="btn-cancelar-plan" style="display:none;" onclick="cancelarEdicionPlan()">Cancelar edición</button>
+                </form>
+            </div>
+
+            <!-- TABLA DEL PLAN -->
+            <div class="section">
+                <div class="table-toolbar">
+                    <h3 class="section-title" style="margin-bottom:0;"><i class="fa-solid fa-list-check"></i> Plan Anual de Auditoría</h3>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <select id="filtroTrimestre" onchange="renderizarTablaPlan()" style="padding:8px 12px; border:1px solid var(--border); border-radius:6px;">
+                            <option value="">Todos los trimestres</option>
+                            <option value="Q1">Q1</option>
+                            <option value="Q2">Q2</option>
+                            <option value="Q3">Q3</option>
+                            <option value="Q4">Q4</option>
+                        </select>
+                        <select id="filtroAuditor" onchange="renderizarTablaPlan()" style="padding:8px 12px; border:1px solid var(--border); border-radius:6px;">
+                            <option value="">Todos los auditores</option>
+                        </select>
+                        <input type="text" id="buscarPlan" placeholder="Buscar actividad..." style="padding:8px 12px; border:1px solid var(--border); border-radius:6px; min-width:200px;" oninput="renderizarTablaPlan()">
+                    </div>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Actividad</th>
+                                <th>Categoría</th>
+                                <th>Riesgo asociado</th>
+                                <th>Trimestre</th>
+                                <th>Auditor / Equipo</th>
+                                <th>Prioridad</th>
+                                <th>Estado</th>
+                                <th class="no-print">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaPlan"></tbody>
+                    </table>
+                </div>
+                <div id="planEmptyState" class="empty-state" style="display:none;">
+                    <i class="fa-solid fa-calendar-check" style="font-size:2rem; margin-bottom:10px; display:block;"></i>
+                    Todavía no hay auditorías planificadas. Usá el formulario de arriba para agregar la primera.
+                </div>
+            </div>
+        </div> <!-- /tabPanel-plan -->
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'matrizRiesgos';
+
+        const PROBABILIDADES = ['', 'Raro', 'Poco Probable', 'Posible', 'Muy Probable', 'Casi Seguro'];
+        const IMPACTOS = ['', 'Insignificante', 'Menor', 'Moderado', 'Mayor', 'Catastrófico'];
+
+        // matrizNiveles[probabilidad][impacto] -> nivel de riesgo (según la matriz estándar 5x5)
+        const MATRIZ_NIVELES = {
+            1: { 1: 'Bajo',  2: 'Bajo',  3: 'Medio', 4: 'Medio',   5: 'Medio' },
+            2: { 1: 'Bajo',  2: 'Bajo',  3: 'Medio', 4: 'Medio',   5: 'Alto' },
+            3: { 1: 'Bajo',  2: 'Medio', 3: 'Medio', 4: 'Alto',    5: 'Alto' },
+            4: { 1: 'Medio', 2: 'Medio', 3: 'Alto',  4: 'Alto',    5: 'Muy Alto' },
+            5: { 1: 'Medio', 2: 'Medio', 3: 'Alto',  4: 'Muy Alto',5: 'Muy Alto' },
+        };
+
+        const NIVEL_CLASE = { 'Bajo': 'nivel-bajo', 'Medio': 'nivel-medio', 'Alto': 'nivel-alto', 'Muy Alto': 'nivel-muyalto' };
+        const ESTADO_CLASE = { 'Abierto': 'estado-abierto', 'En tratamiento': 'estado-tratamiento', 'Mitigado': 'estado-mitigado', 'Cerrado': 'estado-cerrado' };
+
+        let filtroCelda = null; // { probabilidad, impacto }
+
+        function calcularNivel(probabilidad, impacto) {
+            return MATRIZ_NIVELES[probabilidad][impacto];
         }
 
-        async function guardarUsuario(e) {
-            e.preventDefault();
-            const id     = document.getElementById('crear-id').value.toLowerCase().trim();
-            const nombre = document.getElementById('crear-nombre').value;
-            const pass   = document.getElementById('crear-pass').value;
-            const modo   = document.getElementById('modo-edicion').value;
-            const checks = document.querySelectorAll('input[name="herramientas"]:checked');
-            const herramientasAsignadas = Array.from(checks).map(cb => cb.value);
-            const rol = (id === 'admin' ? 'admin' : 'auditor');
-
+        function cargarRiesgos() {
             try {
-                let r;
-                if (modo === 'crear') {
-                    r = await apiPost('createUser', { usuario: id, password: pass, rol });
-                    if (r && r.ok) {
-                        // Guardar también herramientas en config
-                        await apiPost('saveChecklists', {
-                            checklistsJson: null,
-                            orderJson: null,
-                            usuarioConfig: JSON.stringify({ id, nombre, herramientas: herramientasAsignadas })
-                        }).catch(()=>{});
-                        // Actualizar nombre si es diferente del id
-                        dbLocal[id] = { nombre, rol, herramientas: herramientasAsignadas };
-                    }
-                } else {
-                    if (pass) {
-                        r = await apiPost('resetPassword', { usuario: id, newPassword: pass });
-                    } else {
-                        r = { ok: true };
-                    }
-                    dbLocal[id] = { ...dbLocal[id], nombre, herramientas: herramientasAsignadas };
-                }
-
-                if (r && r.ok) {
-                    registrarBitacora(modo === 'editar' ? 'EDITAR' : 'CREAR', 'Configuración',
-                        `Funcionario ${modo === 'editar' ? 'actualizado' : 'creado'} - ${id} (${nombre})`);
-                    alert(modo === 'editar' ? 'Funcionario actualizado exitosamente.' : 'Funcionario registrado exitosamente.');
-                    cancelarEdicion();
-                    await renderizarTablaUsuarios();
-                } else {
-                    alert('Error: ' + (r && r.error ? r.error : 'No se pudo guardar el funcionario.'));
-                }
-            } catch(e) {
-                alert('Error de conexión al guardar funcionario.');
+                try {
+              const _rr = await apiPost('riesgosCargar');
+              if (_rr && _rr.ok) return _rr.data || [];
+            } catch(e) {}
+            return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            } catch (e) {
+                return [];
             }
         }
 
-        function editarUsuario(id) {
-            const datos = dbLocal[id];
-            if (!datos) return;
+        function guardarEnStorage(riesgos) {
+            apiPost('riesgosGuardar', { riesgos }).catch(()=>{}); localStorage.setItem(STORAGE_KEY, JSON.stringify(riesgos));
+        }
 
-            document.getElementById('crear-id').value = id;
-            document.getElementById('crear-id').disabled = true;
-            document.getElementById('crear-nombre').value = datos.nombre || id;
-            document.getElementById('crear-pass').value = '';
+        function mostrarMensaje(tipo, texto, duracion = 2500) {
+            const el = document.getElementById('message');
+            el.className = 'message show ' + tipo;
+            el.textContent = texto;
+            setTimeout(() => { el.classList.remove('show'); }, duracion);
+        }
 
-            document.querySelectorAll('input[name="herramientas"]').forEach(cb => {
-                cb.checked = (datos.herramientas || []).includes(cb.value);
-            });
+        // ===================== MATRIZ =====================
+        function renderizarMatriz() {
+            const grid = document.getElementById('matrizGrid');
+            const riesgos = cargarRiesgos();
+            let html = '';
 
-            document.getElementById('modo-edicion').value = 'editar';
-            document.getElementById('form-titulo-modo').textContent = 'Editar Funcionario: ' + id;
-            document.getElementById('btn-guardar-usuario').textContent = 'Guardar Cambios';
-            document.getElementById('btn-cancelar-edicion').style.display = 'inline-block';
+            // Fila de encabezados (esquina + 5 columnas de impacto)
+            html += `<div class="celda celda-corner"><i class="fa-solid fa-triangle-exclamation"></i></div>`;
+            for (let i = 1; i <= 5; i++) {
+                html += `<div class="celda celda-header">${IMPACTOS[i]}</div>`;
+            }
 
-            document.getElementById('form-usuario').scrollIntoView({ behavior: 'smooth' });
+            // Filas de probabilidad, de mayor a menor (Casi Seguro arriba, Raro abajo)
+            for (let p = 5; p >= 1; p--) {
+                html += `<div class="celda celda-rowlabel">${PROBABILIDADES[p]}</div>`;
+                for (let im = 1; im <= 5; im++) {
+                    const nivel = calcularNivel(p, im);
+                    const cantidad = riesgos.filter(r => Number(r.probabilidad) === p && Number(r.impacto) === im).length;
+                    const activo = filtroCelda && filtroCelda.probabilidad === p && filtroCelda.impacto === im;
+                    html += `<div class="celda celda-riesgo ${NIVEL_CLASE[nivel]} ${activo ? 'filtro-activo' : ''}" onclick="toggleFiltroCelda(${p}, ${im})">
+                        <span class="celda-nivel">${nivel}</span>
+                        ${cantidad > 0 ? `<span class="celda-badge">${cantidad} riesgo${cantidad !== 1 ? 's' : ''}</span>` : ''}
+                    </div>`;
+                }
+            }
+            grid.innerHTML = html;
+        }
+
+        function toggleFiltroCelda(probabilidad, impacto) {
+            if (filtroCelda && filtroCelda.probabilidad === probabilidad && filtroCelda.impacto === impacto) {
+                filtroCelda = null;
+            } else {
+                filtroCelda = { probabilidad, impacto };
+            }
+            renderizarMatriz();
+            renderizarTabla();
+        }
+
+        function limpiarFiltro() {
+            filtroCelda = null;
+            renderizarMatriz();
+            renderizarTabla();
+        }
+
+        // ===================== FORMULARIO =====================
+        function previsualizarNivel() {
+            const p = parseInt(document.getElementById('riesgo-probabilidad').value);
+            const im = parseInt(document.getElementById('riesgo-impacto').value);
+            const preview = document.getElementById('nivelPreview');
+            if (!p || !im) {
+                preview.className = '';
+                preview.textContent = 'Seleccioná probabilidad e impacto';
+                return;
+            }
+            const nivel = calcularNivel(p, im);
+            preview.className = 'nivel-preview ' + NIVEL_CLASE[nivel];
+            preview.textContent = nivel;
+        }
+
+        function guardarRiesgo(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('riesgo-id').value;
+            const probabilidad = parseInt(document.getElementById('riesgo-probabilidad').value);
+            const impacto = parseInt(document.getElementById('riesgo-impacto').value);
+
+            const riesgo = {
+                id: id ? Number(id) : Date.now(),
+                nombre: document.getElementById('riesgo-nombre').value.trim(),
+                categoria: document.getElementById('riesgo-categoria').value,
+                responsable: document.getElementById('riesgo-responsable').value.trim(),
+                probabilidad,
+                impacto,
+                nivel: calcularNivel(probabilidad, impacto),
+                estado: document.getElementById('riesgo-estado').value,
+                fecha: document.getElementById('riesgo-fecha').value,
+                plan: document.getElementById('riesgo-plan').value.trim(),
+            };
+
+            let riesgos = cargarRiesgos();
+            if (id) {
+                riesgos = riesgos.map(r => r.id === Number(id) ? riesgo : r);
+                mostrarMensaje('success', '✅ Riesgo actualizado correctamente');
+            } else {
+                riesgos.push(riesgo);
+                mostrarMensaje('success', '✅ Riesgo registrado correctamente');
+            }
+            guardarEnStorage(riesgos);
+
+            if (id) {
+                registrarBitacora('EDITAR', 'Matriz de Riesgos', `Riesgo actualizado - ${riesgo.nombre} (nivel: ${riesgo.nivel})`);
+            } else {
+                registrarBitacora('CREAR', 'Matriz de Riesgos', `Riesgo registrado - ${riesgo.nombre} (nivel: ${riesgo.nivel})`);
+            }
+
+            cancelarEdicion();
+            renderizarMatriz();
+            renderizarTabla();
+            actualizarStats();
+        }
+
+        function editarRiesgo(id) {
+            const riesgo = cargarRiesgos().find(r => r.id === id);
+            if (!riesgo) return;
+
+            document.getElementById('riesgo-id').value = riesgo.id;
+            document.getElementById('riesgo-nombre').value = riesgo.nombre;
+            document.getElementById('riesgo-categoria').value = riesgo.categoria;
+            document.getElementById('riesgo-responsable').value = riesgo.responsable || '';
+            document.getElementById('riesgo-probabilidad').value = riesgo.probabilidad;
+            document.getElementById('riesgo-impacto').value = riesgo.impacto;
+            document.getElementById('riesgo-estado').value = riesgo.estado;
+            document.getElementById('riesgo-fecha').value = riesgo.fecha || '';
+            document.getElementById('riesgo-plan').value = riesgo.plan || '';
+            previsualizarNivel();
+
+            document.getElementById('form-title-text').textContent = 'Editar Riesgo';
+            document.getElementById('form-btn-text').textContent = 'Actualizar Riesgo';
+            document.getElementById('btn-cancelar-edicion').style.display = 'inline-flex';
+            document.getElementById('form-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function cancelarEdicion() {
-            document.getElementById('form-usuario').reset();
-            document.getElementById('crear-id').disabled = false;
-            document.getElementById('modo-edicion').value = 'crear';
-            document.getElementById('form-titulo-modo').textContent = 'Crear Nuevo Funcionario';
-            document.getElementById('btn-guardar-usuario').textContent = 'Registrar Funcionario';
+            document.getElementById('riesgoForm').reset();
+            document.getElementById('riesgo-id').value = '';
+            document.getElementById('form-title-text').textContent = 'Registrar Nuevo Riesgo';
+            document.getElementById('form-btn-text').textContent = 'Guardar Riesgo';
             document.getElementById('btn-cancelar-edicion').style.display = 'none';
+            previsualizarNivel();
         }
 
-        async function eliminarUsuario(idEliminar) {
-            if (idEliminar === usuarioActual.username) {
-                alert('No puedes eliminar tu propio usuario mientras estás conectado.');
+        function eliminarRiesgo(id) {
+            if (!confirm('¿Eliminar este riesgo del registro? Esta acción no se puede deshacer.')) return;
+            const riesgo = cargarRiesgos().find(r => r.id === id);
+            const riesgos = cargarRiesgos().filter(r => r.id !== id);
+            guardarEnStorage(riesgos);
+            registrarBitacora('ELIMINAR', 'Matriz de Riesgos', `Riesgo eliminado - ${riesgo ? riesgo.nombre : 'ID ' + id}`);
+            renderizarMatriz();
+            renderizarTabla();
+            actualizarStats();
+            mostrarMensaje('success', 'Riesgo eliminado');
+        }
+
+        // ===================== TABLA =====================
+        function renderizarTabla() {
+            let riesgos = cargarRiesgos();
+
+            if (filtroCelda) {
+                riesgos = riesgos.filter(r => Number(r.probabilidad) === filtroCelda.probabilidad && Number(r.impacto) === filtroCelda.impacto);
+                document.getElementById('filtroActivoTxt').style.display = 'flex';
+                document.getElementById('filtroActivoLabel').textContent =
+                    `Filtrando: ${PROBABILIDADES[filtroCelda.probabilidad]} × ${IMPACTOS[filtroCelda.impacto]}`;
+            } else {
+                document.getElementById('filtroActivoTxt').style.display = 'none';
+            }
+
+            const busqueda = (document.getElementById('buscarRiesgo').value || '').toLowerCase().trim();
+            if (busqueda) {
+                riesgos = riesgos.filter(r =>
+                    r.nombre.toLowerCase().includes(busqueda) ||
+                    (r.categoria || '').toLowerCase().includes(busqueda) ||
+                    (r.responsable || '').toLowerCase().includes(busqueda)
+                );
+            }
+
+            const tbody = document.getElementById('tablaRiesgos');
+            const emptyState = document.getElementById('emptyState');
+
+            if (riesgos.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.style.display = 'block';
                 return;
             }
-            if (confirm(`¿Estás seguro de que deseas eliminar al funcionario '${idEliminar}'?`)) {
-                try {
-                    const r = await apiPost('setUserEstado', { usuario: idEliminar, estado: 'inactivo' });
-                    if (r && r.ok) {
-                        registrarBitacora('ELIMINAR', 'Configuración', `Funcionario desactivado - ${idEliminar}`);
-                        delete dbLocal[idEliminar];
-                        await renderizarTablaUsuarios();
-                    } else {
-                        alert('Error al eliminar funcionario: ' + (r && r.error ? r.error : 'Error desconocido'));
-                    }
-                } catch(e) {
-                    alert('Error de conexión.');
-                }
-            }
-        }
+            emptyState.style.display = 'none';
 
-        async function renderizarTablaUsuarios() {
-            const tbody = document.getElementById('tabla-usuarios');
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#888">Cargando...</td></tr>';
-            try {
-                const r = await apiPost('listUsers');
-                if (r && r.ok && r.data) {
-                    dbLocal = {};
-                    r.data.forEach(u => { dbLocal[u.usuario] = { nombre: u.nombre, rol: u.rol, herramientas: [] }; });
-                }
-            } catch(e) { console.warn('Error cargando usuarios:', e); }
-            tbody.innerHTML = '';
-            for (const [id, datos] of Object.entries(dbLocal)) {
-                const herramientasNombres = {
-                    'logistico': '📦 Logística',
-                        'audinterna': '🔍 Auditoría Interna',
-                    'ventas': '🏪 Ventas',
-                    'financiera': '📊 Finanzas',
-                    'equipo': '👥 Equipo',
-                    'activos': '💻 Activos',
-                    'seguridad': '🔒 Seguridad'
-                };
+            riesgos.sort((a, b) => (b.probabilidad * b.impacto) - (a.probabilidad * a.impacto));
 
-                let etiquetasHerramientas = (datos.herramientas || [])
-                    .map(h => `<span style="background:#e9ecef; padding:3px 8px; border-radius:4px; font-size:0.75rem; margin-right:4px; display:inline-block; margin-bottom:3px;">${herramientasNombres[h] || h}</span>`)
-                    .join('');
-
-                if (datos.rol === 'superusuario') {
-                    etiquetasHerramientas = '<strong>👑 Acceso Total (Admin)</strong>';
-                }
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><strong>${id}</strong></td>
-                    <td>${datos.nombre}</td>
-                    <td>${etiquetasHerramientas}</td>
-                    <td>
-                        <div style="display: flex; gap: 6px;">
-                            <button class="btn-warning" onclick="editarUsuario('${id}')">Editar</button>
-                            ${id !== usuarioActual.username 
-                                ? `<button class="btn-danger" onclick="eliminarUsuario('${id}')">Eliminar</button>` 
-                                : `<span style="color:#6c757d; font-size:0.8rem; align-self:center;">(Tú)</span>`
-                            }
-                        </div>
+            tbody.innerHTML = riesgos.map(r => `
+                <tr>
+                    <td><strong>${escapeHtml(r.nombre)}</strong>${r.plan ? `<br><span style="color:#888; font-size:0.8rem;">${escapeHtml(r.plan)}</span>` : ''}</td>
+                    <td>${escapeHtml(r.categoria || '—')}</td>
+                    <td>${PROBABILIDADES[r.probabilidad]}</td>
+                    <td>${IMPACTOS[r.impacto]}</td>
+                    <td><span class="badge-nivel ${NIVEL_CLASE[r.nivel]}">${r.nivel}</span></td>
+                    <td>${escapeHtml(r.responsable || '—')}</td>
+                    <td><span class="badge-estado ${ESTADO_CLASE[r.estado] || ''}">${r.estado}</span></td>
+                    <td class="no-print">
+                        <button class="btn btn-outline btn-sm" onclick="editarRiesgo(${r.id})"><i class="fa-solid fa-pen"></i></button>
+                        <button class="btn btn-danger btn-sm" onclick="eliminarRiesgo(${r.id})"><i class="fa-solid fa-trash"></i></button>
                     </td>
-                `;
-                tbody.appendChild(tr);
-            }
-            if (!tbody.hasChildNodes()) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#888">No hay funcionarios registrados.</td></tr>';
+                </tr>
+            `).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ===================== ESTADÍSTICAS =====================
+        function actualizarStats() {
+            const riesgos = cargarRiesgos();
+            document.getElementById('stat-total').textContent = riesgos.length;
+            document.getElementById('stat-criticos').textContent = riesgos.filter(r => r.nivel === 'Alto' || r.nivel === 'Muy Alto').length;
+            document.getElementById('stat-abiertos').textContent = riesgos.filter(r => r.estado === 'Abierto' || r.estado === 'En tratamiento').length;
+            document.getElementById('stat-mitigados').textContent = riesgos.filter(r => r.estado === 'Mitigado' || r.estado === 'Cerrado').length;
+        }
+
+        // ===================== PESTAÑAS =====================
+        function cambiarTab(tab) {
+            document.getElementById('tabPanel-matriz').style.display = tab === 'matriz' ? 'block' : 'none';
+            document.getElementById('tabPanel-plan').style.display = tab === 'plan' ? 'block' : 'none';
+            document.getElementById('tabBtn-matriz').classList.toggle('active', tab === 'matriz');
+            document.getElementById('tabBtn-plan').classList.toggle('active', tab === 'plan');
+            if (tab === 'plan') {
+                poblarSelectAuditores();
+                poblarSelectRiesgos();
+                renderizarQuarterGrid();
+                renderizarTablaPlan();
+                actualizarStatsPlan();
             }
         }
+
+        // ===================== PLAN ANUAL DE AUDITORÍA =====================
+        const PLAN_STORAGE_KEY = 'planAnualAuditoria';
+        const TRIMESTRES = { 'Q1': 'Enero - Marzo', 'Q2': 'Abril - Junio', 'Q3': 'Julio - Septiembre', 'Q4': 'Octubre - Diciembre' };
+        const PRIORIDAD_CLASE = { 'Baja': 'prioridad-baja', 'Media': 'prioridad-media', 'Alta': 'prioridad-alta', 'Crítica': 'prioridad-critica' };
+        const NIVEL_A_PRIORIDAD = { 'Bajo': 'Baja', 'Medio': 'Media', 'Alto': 'Alta', 'Muy Alto': 'Crítica' };
+
+        function cargarPlan() {
+            try {
+              const _rp = await apiPost('planAnualCargar');
+              if (_rp && _rp.ok) return _rp.data || [];
+            } catch(e) {}
+            try { return JSON.parse(localStorage.getItem(PLAN_STORAGE_KEY) || '[]'); } catch (e) { return []; }
+        }
+        function guardarPlanEnStorage(plan) {
+            apiPost('planAnualGuardar', { plan }).catch(()=>{}); localStorage.setItem(PLAN_STORAGE_KEY, JSON.stringify(plan));
+        }
+
+        // Trae los funcionarios registrados en el sistema (mismo origen que usa el login / Configuración)
+        function obtenerAuditoresRegistrados() {
+            try {
+                let _usersMap = {};
+                try { const _ru = await apiPost('listUsers'); if(_ru && _ru.ok) _ru.data.forEach(u => _usersMap[u.usuario]=u); } catch(e) {}
+                return Object.keys(_usersMap).map(username => ({
+                    username,
+                    nombre: _usersMap[username].nombre || username,
+                    rol: _usersMap[username].rol || 'auditor',
+                }));
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function poblarSelectAuditores() {
+            const auditores = obtenerAuditoresRegistrados();
+            const select = document.getElementById('plan-auditor');
+            const filtro = document.getElementById('filtroAuditor');
+            const valorActual = select.value;
+            const valorFiltroActual = filtro.value;
+
+            select.innerHTML = '<option value="">Seleccionar...</option>' + auditores.map(a =>
+                `<option value="${a.username}">${escapeHtml(a.nombre)} ${a.rol === 'superusuario' ? '(Administrador)' : '(Auditor)'}</option>`
+            ).join('');
+            filtro.innerHTML = '<option value="">Todos los auditores</option>' + auditores.map(a =>
+                `<option value="${a.username}">${escapeHtml(a.nombre)}</option>`
+            ).join('');
+
+            select.value = valorActual;
+            filtro.value = valorFiltroActual;
+        }
+
+        function poblarSelectRiesgos() {
+            const riesgos = cargarRiesgos();
+            const select = document.getElementById('plan-riesgo');
+            const valorActual = select.value;
+            select.innerHTML = '<option value="">Sin riesgo asociado</option>' + riesgos.map(r =>
+                `<option value="${r.id}">${escapeHtml(r.nombre)} — ${r.nivel}</option>`
+            ).join('');
+            select.value = valorActual;
+        }
+
+        // Al elegir un riesgo asociado, autocompleta categoría y prioridad según ese riesgo
+        function autocompletarDesdeRiesgo() {
+            const riesgoId = document.getElementById('plan-riesgo').value;
+            if (!riesgoId) return;
+            const riesgo = cargarRiesgos().find(r => r.id === Number(riesgoId));
+            if (!riesgo) return;
+            if (riesgo.categoria) document.getElementById('plan-categoria').value = riesgo.categoria;
+            document.getElementById('plan-prioridad').value = NIVEL_A_PRIORIDAD[riesgo.nivel] || 'Media';
+        }
+
+        function mostrarMensajePlan(tipo, texto, duracion = 2500) {
+            const el = document.getElementById('planMessage');
+            el.className = 'message show ' + tipo;
+            el.textContent = texto;
+            setTimeout(() => { el.classList.remove('show'); }, duracion);
+        }
+
+        function guardarPlan(event) {
+            event.preventDefault();
+            const id = document.getElementById('plan-id').value;
+            const auditorUsername = document.getElementById('plan-auditor').value;
+            const auditores = obtenerAuditoresRegistrados();
+            const auditorInfo = auditores.find(a => a.username === auditorUsername);
+
+            const item = {
+                id: id ? Number(id) : Date.now(),
+                actividad: document.getElementById('plan-actividad').value.trim(),
+                categoria: document.getElementById('plan-categoria').value,
+                riesgoId: document.getElementById('plan-riesgo').value ? Number(document.getElementById('plan-riesgo').value) : null,
+                auditorUsername,
+                auditorNombre: auditorInfo ? auditorInfo.nombre : auditorUsername,
+                trimestre: document.getElementById('plan-trimestre').value,
+                fecha: document.getElementById('plan-fecha').value,
+                prioridad: document.getElementById('plan-prioridad').value,
+                estado: document.getElementById('plan-estado').value,
+                notas: document.getElementById('plan-notas').value.trim(),
+            };
+
+            let plan = cargarPlan();
+            if (id) {
+                plan = plan.map(p => p.id === Number(id) ? item : p);
+                mostrarMensajePlan('success', '✅ Planificación actualizada correctamente');
+            } else {
+                plan.push(item);
+                mostrarMensajePlan('success', '✅ Auditoría planificada correctamente');
+            }
+            guardarPlanEnStorage(plan);
+
+            if (id) {
+                registrarBitacora('EDITAR', 'Plan Anual de Auditoría', `Planificación actualizada - ${item.actividad} (asignado a ${item.auditorNombre}, ${item.trimestre})`);
+            } else {
+                registrarBitacora('CREAR', 'Plan Anual de Auditoría', `Auditoría planificada - ${item.actividad} (asignado a ${item.auditorNombre}, ${item.trimestre})`);
+            }
+
+            cancelarEdicionPlan();
+            renderizarQuarterGrid();
+            renderizarTablaPlan();
+            actualizarStatsPlan();
+        }
+
+        function editarPlan(id) {
+            const item = cargarPlan().find(p => p.id === id);
+            if (!item) return;
+
+            poblarSelectAuditores();
+            poblarSelectRiesgos();
+
+            document.getElementById('plan-id').value = item.id;
+            document.getElementById('plan-actividad').value = item.actividad;
+            document.getElementById('plan-categoria').value = item.categoria;
+            document.getElementById('plan-riesgo').value = item.riesgoId || '';
+            document.getElementById('plan-auditor').value = item.auditorUsername || '';
+            document.getElementById('plan-trimestre').value = item.trimestre;
+            document.getElementById('plan-fecha').value = item.fecha || '';
+            document.getElementById('plan-prioridad').value = item.prioridad;
+            document.getElementById('plan-estado').value = item.estado;
+            document.getElementById('plan-notas').value = item.notas || '';
+
+            document.getElementById('plan-form-title-text').textContent = 'Editar Planificación';
+            document.getElementById('plan-form-btn-text').textContent = 'Actualizar Planificación';
+            document.getElementById('btn-cancelar-plan').style.display = 'inline-flex';
+            document.getElementById('planForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function cancelarEdicionPlan() {
+            document.getElementById('planForm').reset();
+            document.getElementById('plan-id').value = '';
+            document.getElementById('plan-form-title-text').textContent = 'Planificar Nueva Auditoría';
+            document.getElementById('plan-form-btn-text').textContent = 'Guardar Planificación';
+            document.getElementById('btn-cancelar-plan').style.display = 'none';
+        }
+
+        function eliminarPlan(id) {
+            if (!confirm('¿Eliminar esta auditoría del plan anual?')) return;
+            const item = cargarPlan().find(p => p.id === id);
+            const plan = cargarPlan().filter(p => p.id !== id);
+            guardarPlanEnStorage(plan);
+            registrarBitacora('ELIMINAR', 'Plan Anual de Auditoría', `Planificación eliminada - ${item ? item.actividad : 'ID ' + id}`);
+            renderizarQuarterGrid();
+            renderizarTablaPlan();
+            actualizarStatsPlan();
+            mostrarMensajePlan('success', 'Planificación eliminada');
+        }
+
+        function renderizarQuarterGrid() {
+            const plan = cargarPlan();
+            const grid = document.getElementById('quarterGrid');
+            grid.innerHTML = Object.keys(TRIMESTRES).map(q => {
+                const items = plan.filter(p => p.trimestre === q);
+                const completadas = items.filter(p => p.estado === 'Completado').length;
+                const pct = items.length ? Math.round((completadas / items.length) * 100) : 0;
+                return `<div class="quarter-card">
+                    <h4>${q}</h4>
+                    <div class="quarter-meses">${TRIMESTRES[q]}</div>
+                    <div class="quarter-count">${items.length}</div>
+                    <div class="quarter-label">auditoría${items.length !== 1 ? 's' : ''} planificada${items.length !== 1 ? 's' : ''}</div>
+                    <div class="quarter-progress"><div class="quarter-progress-fill" style="width:${pct}%;"></div></div>
+                    <div class="quarter-label" style="margin-top:6px;">${completadas}/${items.length} completadas</div>
+                </div>`;
+            }).join('');
+        }
+
+        function renderizarTablaPlan() {
+            let plan = cargarPlan();
+            const riesgos = cargarRiesgos();
+
+            const trimFiltro = document.getElementById('filtroTrimestre').value;
+            const auditorFiltro = document.getElementById('filtroAuditor').value;
+            const busqueda = (document.getElementById('buscarPlan').value || '').toLowerCase().trim();
+
+            if (trimFiltro) plan = plan.filter(p => p.trimestre === trimFiltro);
+            if (auditorFiltro) plan = plan.filter(p => p.auditorUsername === auditorFiltro);
+            if (busqueda) plan = plan.filter(p => p.actividad.toLowerCase().includes(busqueda) || (p.categoria || '').toLowerCase().includes(busqueda));
+
+            const tbody = document.getElementById('tablaPlan');
+            const emptyState = document.getElementById('planEmptyState');
+
+            if (plan.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+            emptyState.style.display = 'none';
+
+            const ordenTrimestre = { 'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4 };
+            plan.sort((a, b) => (ordenTrimestre[a.trimestre] || 9) - (ordenTrimestre[b.trimestre] || 9));
+
+            tbody.innerHTML = plan.map(p => {
+                const riesgo = p.riesgoId ? riesgos.find(r => r.id === p.riesgoId) : null;
+                return `<tr>
+                    <td><strong>${escapeHtml(p.actividad)}</strong>${p.notas ? `<br><span style="color:#888; font-size:0.8rem;">${escapeHtml(p.notas)}</span>` : ''}</td>
+                    <td>${escapeHtml(p.categoria || '—')}</td>
+                    <td>${riesgo ? `<span class="badge-nivel ${NIVEL_CLASE[riesgo.nivel]}">${escapeHtml(riesgo.nombre)}</span>` : '—'}</td>
+                    <td>${p.trimestre || '—'}</td>
+                    <td>${escapeHtml(p.auditorNombre || '—')}</td>
+                    <td><span class="badge-prioridad ${PRIORIDAD_CLASE[p.prioridad] || ''}">${p.prioridad}</span></td>
+                    <td><span class="badge-estado ${p.estado === 'Completado' ? 'estado-mitigado' : p.estado === 'En curso' ? 'estado-tratamiento' : p.estado === 'Reprogramado' ? 'estado-cerrado' : 'estado-abierto'}">${p.estado}</span></td>
+                    <td class="no-print">
+                        <button class="btn btn-outline btn-sm" onclick="editarPlan(${p.id})"><i class="fa-solid fa-pen"></i></button>
+                        <button class="btn btn-danger btn-sm" onclick="eliminarPlan(${p.id})"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function actualizarStatsPlan() {
+            const plan = cargarPlan();
+            document.getElementById('plan-stat-total').textContent = plan.length;
+            document.getElementById('plan-stat-pendientes').textContent = plan.filter(p => p.estado === 'Planificado' || p.estado === 'En curso').length;
+            document.getElementById('plan-stat-completadas').textContent = plan.filter(p => p.estado === 'Completado').length;
+            document.getElementById('plan-stat-criticas').textContent = plan.filter(p => p.prioridad === 'Alta' || p.prioridad === 'Crítica').length;
+        }
+
+        // ===================== INIT =====================
+        document.addEventListener('DOMContentLoaded', () => {
+            renderizarMatriz();
+            renderizarTabla();
+            actualizarStats();
+            document.getElementById('riesgo-fecha').value = new Date().toISOString().split('T')[0];
+
+            poblarSelectAuditores();
+            poblarSelectRiesgos();
+            renderizarQuarterGrid();
+            renderizarTablaPlan();
+            actualizarStatsPlan();
+        });
     </script>
 </body>
 </html>
