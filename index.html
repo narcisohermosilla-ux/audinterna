@@ -414,42 +414,62 @@ document.addEventListener('DOMContentLoaded', function() {
     var esAdmin = usuarioActual.rol === 'admin' || usuarioActual.rol === 'superusuario';
     if (elRol) elRol.textContent = esAdmin ? 'Administrador' : 'Auditor';
 
-    // Herramientas del admin por defecto
-    if (esAdmin && (!usuarioActual.herramientas || usuarioActual.herramientas.length === 0)) {
-        usuarioActual.herramientas = ['logistico','audinterna','ventas','financiera','equipo','activos','seguridad','riesgos'];
+    // Cargar herramientas desde Supabase para tener siempre los datos frescos
+    function aplicarHerramientas(herramientas) {
+        herramientas = herramientas || [];
+        usuarioActual.herramientas = herramientas;
+
+        // Mostrar menús
+        herramientas.forEach(function(h) {
+            var el = document.getElementById('menu-' + h);
+            if (el) el.style.display = 'block';
+        });
+
+        // Panel admin
+        if (esAdmin) {
+            var panelAdmin = document.getElementById('panel-admin');
+            if (panelAdmin) panelAdmin.classList.remove('admin-only');
+            var menuBitacora = document.getElementById('menu-bitacora');
+            if (menuBitacora) menuBitacora.style.display = 'block';
+            var menuAudinterna = document.getElementById('menu-audinterna');
+            if (menuAudinterna) menuAudinterna.style.display = 'block';
+            // Mostrar todos los menús para admin
+            ['logistico','audinterna','ventas','financiera','equipo','activos','seguridad','riesgos'].forEach(function(h) {
+                var el = document.getElementById('menu-' + h);
+                if (el) el.style.display = 'block';
+            });
+            cargarUsuarios();
+        }
+
+        registrarBitacora('ACCESO', 'Dashboard', 'Acceso al panel principal');
+
+        // Navegar a la primera vista disponible
+        var vistaParam = new URLSearchParams(window.location.search).get('vista');
+        var todasHerramientas = esAdmin ? ['logistico','audinterna','ventas','financiera','equipo','activos','seguridad','riesgos'] : herramientas;
+        if (vistaParam === 'configuracion') {
+            cambiarVista('configuracion');
+        } else if (vistaParam && todasHerramientas.includes(vistaParam)) {
+            cambiarVista(vistaParam);
+        } else if (todasHerramientas.length > 0) {
+            cambiarVista(todasHerramientas[0]);
+        } else {
+            cambiarVista('configuracion');
+        }
     }
 
-    var herramientas = usuarioActual.herramientas || [];
-
-    // Mostrar menús según herramientas
-    herramientas.forEach(function(h) {
-        var el = document.getElementById('menu-' + h);
-        if (el) el.style.display = 'block';
-    });
-
-    // Panel admin
-    if (esAdmin) {
-        var panelAdmin = document.getElementById('panel-admin');
-        if (panelAdmin) panelAdmin.classList.remove('admin-only');
-        var menuBitacora = document.getElementById('menu-bitacora');
-        if (menuBitacora) menuBitacora.style.display = 'block';
-        var menuAudinterna = document.getElementById('menu-audinterna');
-        if (menuAudinterna) menuAudinterna.style.display = 'block';
-        cargarUsuarios();
-    }
-
-    registrarBitacora('ACCESO', 'Dashboard', 'Acceso al panel principal');
-
-    // Navegar a la primera vista disponible
-    var vistaParam = new URLSearchParams(window.location.search).get('vista');
-    if (vistaParam === 'configuracion') {
-        cambiarVista('configuracion');
-    } else if (vistaParam && herramientas.includes(vistaParam)) {
-        cambiarVista(vistaParam);
-    } else if (herramientas.length > 0) {
-        cambiarVista(herramientas[0]);
+    // Si el admin no tiene herramientas en sesión, cargarlas desde Supabase
+    var herramientasSesion = usuarioActual.herramientas || [];
+    if (esAdmin && herramientasSesion.length === 0) {
+        apiPost('listUsers').then(function(r) {
+            if (r && r.data) {
+                var yo = r.data.find(function(u){ return u.usuario === usuarioActual.usuario; });
+                aplicarHerramientas(yo ? (yo.herramientas || []) : []);
+            } else {
+                aplicarHerramientas([]);
+            }
+        }).catch(function(){ aplicarHerramientas([]); });
     } else {
-        cambiarVista('configuracion');
+        aplicarHerramientas(herramientasSesion);
     }
 });
 
