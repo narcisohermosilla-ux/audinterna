@@ -154,10 +154,12 @@
                 if (r && r.ok) {
                     // Guardar sesión en el mismo formato que usan los módulos
                     const sesion = {
-                        username: r.usuario,
-                        nombre:   r.nombre || r.usuario,
-                        rol:      r.rol,
-                        token:    r.token
+                        username:     r.usuario,
+                        usuario:      r.usuario,
+                        nombre:       r.nombre || r.usuario,
+                        rol:          r.rol,
+                        token:        r.token,
+                        herramientas: r.herramientas || []
                     };
                     sessionStorage.setItem('usuarioLogueado', JSON.stringify(sesion));
                     window.location.href = 'index.html';
