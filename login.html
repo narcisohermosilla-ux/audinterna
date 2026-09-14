@@ -124,63 +124,61 @@
     </div>
 
     <script>
-        // ── Configuración Supabase ─────────────────────────────────────────
-        const SUPABASE_URL = 'https://rklqmqofnsaafcfwuoxf.supabase.co/functions/v1/api';
+        const _SUPA = 'https://rklqmqofnsaafcfwuoxf.supabase.co/functions/v1/api';
 
-        async function apiPost(action, params = {}) {
-            const res = await fetch(SUPABASE_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action, ...params })
-            });
-            return res.json();
-        }
+        // Si ya hay sesión activa, ir directo al panel
+        (function(){
+            const s = sessionStorage.getItem('usuarioLogueado');
+            if (s) { try { const p = JSON.parse(s); if (p && p.token) { window.location.href = 'index.html'; } } catch(e){} }
+        })();
 
         async function iniciarSesion(event) {
-            event.preventDefault();
+            if (event) event.preventDefault();
 
-            const btnLogin = document.querySelector('.btn-login');
+            const btn      = document.querySelector('.btn-login') || document.querySelector('button[type=submit]') || document.querySelector('button');
             const errorMsg = document.getElementById('error-msg');
-            const usuario  = document.getElementById('usuario').value.trim();
-            const password = document.getElementById('password').value;
+            const usuario  = (document.getElementById('usuario') || document.getElementById('user')).value.trim();
+            const password = (document.getElementById('password') || document.getElementById('pass')).value;
 
-            btnLogin.disabled = true;
-            btnLogin.textContent = 'Verificando...';
+            if (!usuario || !password) {
+                errorMsg.textContent = 'Ingresá usuario y contraseña.';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            if (btn) { btn.disabled = true; btn.textContent = 'Verificando...'; }
             errorMsg.style.display = 'none';
 
             try {
-                const r = await apiPost('login', { usuario, password });
+                const res = await fetch(_SUPA, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'login', usuario, password })
+                });
+                const r = await res.json();
 
-                if (r && r.ok) {
-                    // Guardar sesión en el mismo formato que usan los módulos
-                    const sesion = {
+                if (r && r.ok && r.token) {
+                    sessionStorage.setItem('usuarioLogueado', JSON.stringify({
                         username:     r.usuario,
                         usuario:      r.usuario,
                         nombre:       r.nombre || r.usuario,
-                        rol:          r.rol,
+                        rol:          r.rol || 'auditor',
                         token:        r.token,
                         herramientas: r.herramientas || []
-                    };
-                    sessionStorage.setItem('usuarioLogueado', JSON.stringify(sesion));
+                    }));
                     window.location.href = 'index.html';
                 } else {
-                    errorMsg.textContent = r && r.error ? r.error : 'Credenciales incorrectas o usuario inactivo.';
+                    errorMsg.textContent = (r && r.error) ? r.error : 'Credenciales incorrectas o usuario inactivo.';
                     errorMsg.style.display = 'block';
-                    setTimeout(() => errorMsg.style.display = 'none', 3500);
+                    setTimeout(() => errorMsg.style.display = 'none', 4000);
                 }
             } catch (e) {
                 errorMsg.textContent = 'Error de conexión. Verificá tu internet.';
                 errorMsg.style.display = 'block';
-                setTimeout(() => errorMsg.style.display = 'none', 3500);
+                setTimeout(() => errorMsg.style.display = 'none', 4000);
             } finally {
-                btnLogin.disabled = false;
-                btnLogin.textContent = 'Ingresar';
+                if (btn) { btn.disabled = false; btn.textContent = 'Ingresar'; }
             }
-        }
-
-        // Si ya hay sesión activa, redirigir directamente
-        if (sessionStorage.getItem('usuarioLogueado')) {
-            window.location.href = 'index.html';
         }
     </script>
 </body>
