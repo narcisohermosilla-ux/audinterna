@@ -361,27 +361,31 @@
         // ── Configuración Supabase ──────────────────────────────────────────
         const SUPABASE_URL = 'https://rklqmqofnsaafcfwuoxf.supabase.co/functions/v1/api';
 
+        function getSesion() {
+            try { return JSON.parse(sessionStorage.getItem('usuarioLogueado') || 'null'); } catch(e) { return null; }
+        }
         function getToken() {
-            try {
-                const s = JSON.parse(sessionStorage.getItem('usuarioLogueado') || 'null');
-                return s ? (s.token || null) : null;
-            } catch(e) { return null; }
+            const s = getSesion(); return s ? (s.token || null) : null;
         }
 
         async function apiPost(action, params = {}) {
             const token = getToken();
-            const res = await fetch(SUPABASE_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action, token, ...params })
-            });
-            if (!res.ok && res.status === 401) {
-                // Token expirado — volver al login
-                sessionStorage.removeItem('usuarioLogueado');
-                window.location.href = 'login.html';
+            try {
+                const res = await fetch(SUPABASE_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action, token, ...params })
+                });
+                if (res.status === 401) {
+                    sessionStorage.removeItem('usuarioLogueado');
+                    window.location.href = 'login.html';
+                    return null;
+                }
+                return res.json();
+            } catch(e) {
+                console.warn('apiPost error:', action, e);
                 return null;
             }
-            return res.json();
         }
 
         let usuarioActual = null;
@@ -391,16 +395,17 @@
             const userData = sessionStorage.getItem('usuarioLogueado');
             if (!userData) { window.location.href = 'login.html'; return; }
 
-            usuarioActual = JSON.parse(userData);
+            try { usuarioActual = JSON.parse(userData); } catch(e) { window.location.href = 'login.html'; return; }
+            if (!usuarioActual || !usuarioActual.token) { window.location.href = 'login.html'; return; }
 
-            // Registrar acceso (sin bloquear si falla)
+            // Registrar acceso en segundo plano
             apiPost('log', { accion: 'ACCESO', modulo: 'Dashboard', detalle: 'Acceso al panel principal' }).catch(()=>{});
 
-            document.getElementById('nombre-usuario').textContent = usuarioActual.nombre;
+            document.getElementById('nombre-usuario').textContent = usuarioActual.nombre || usuarioActual.usuario || 'Usuario';
             const esAdmin = usuarioActual.rol === 'admin' || usuarioActual.rol === 'superusuario';
             document.getElementById('rol-usuario-texto').textContent = esAdmin ? 'Administrador' : 'Auditor';
 
-            if (esAdmin && !usuarioActual.herramientas) {
+            if (esAdmin && (!usuarioActual.herramientas || usuarioActual.herramientas.length === 0)) {
                 usuarioActual.herramientas = ['logistico', 'audinterna', 'ventas', 'financiera', 'equipo', 'activos', 'seguridad', 'riesgos'];
             }
 
