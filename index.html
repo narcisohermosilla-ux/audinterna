@@ -442,8 +442,8 @@ function renderTablaUsuarios() {
         var d = dbLocal[id];
         var tr = document.createElement('tr');
         var herrs = (d.herramientas || []).map(function(h){ return nombres[h] || h; }).join(', ') || 'Ninguna';
-        var btnEditar = '<button onclick="editarUsuario('' + id + '')" style="margin-right:6px;padding:4px 10px;border:none;border-radius:4px;background:#0056b3;color:#fff;cursor:pointer;font-size:.8rem">Editar</button>';
-        var btnEliminar = id !== usuarioActual.usuario ? '<button onclick="eliminarUsuario('' + id + '')" style="padding:4px 10px;border:none;border-radius:4px;background:#dc3545;color:#fff;cursor:pointer;font-size:.8rem">Eliminar</button>' : '';
+        var btnEditar = '<button data-uid="' + id + '" onclick="editarUsuario(this.getAttribute(\'data-uid\'))" style="margin-right:6px;padding:4px 10px;border:none;border-radius:4px;background:#0056b3;color:#fff;cursor:pointer;font-size:.8rem">Editar</button>';
+        var btnEliminar = id !== usuarioActual.usuario ? '<button data-uid="' + id + '" onclick="eliminarUsuario(this.getAttribute(\'data-uid\'))" style="padding:4px 10px;border:none;border-radius:4px;background:#dc3545;color:#fff;cursor:pointer;font-size:.8rem">Eliminar</button>' : '';
         tr.innerHTML = '<td><strong>' + id + '</strong></td><td>' + (d.nombre||id) + '</td><td>' + (d.rol||'auditor') + '</td><td style="font-size:.8rem">' + herrs + '</td><td>' + btnEditar + btnEliminar + '</td>';
         tbody.appendChild(tr);
     });
