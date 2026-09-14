@@ -362,8 +362,10 @@
         const SUPABASE_URL = 'https://rklqmqofnsaafcfwuoxf.supabase.co/functions/v1/api';
 
         function getToken() {
-            const s = JSON.parse(sessionStorage.getItem('usuarioLogueado') || 'null');
-            return s ? s.token : null;
+            try {
+                const s = JSON.parse(sessionStorage.getItem('usuarioLogueado') || 'null');
+                return s ? (s.token || null) : null;
+            } catch(e) { return null; }
         }
 
         async function apiPost(action, params = {}) {
@@ -373,6 +375,12 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action, token, ...params })
             });
+            if (!res.ok && res.status === 401) {
+                // Token expirado — volver al login
+                sessionStorage.removeItem('usuarioLogueado');
+                window.location.href = 'login.html';
+                return null;
+            }
             return res.json();
         }
 
@@ -464,31 +472,40 @@
         }
 
         async function cambiarContrasenaPerfil() {
-            const actual = document.getElementById('pass-actual').value;
-            const nueva  = document.getElementById('pass-nueva').value;
+            const actual = document.getElementById('pass-actual').value.trim();
+            const nueva  = document.getElementById('pass-nueva').value.trim();
             const msg    = document.getElementById('msg-pass');
 
+            if (!actual) {
+                msg.textContent = 'Ingresá tu contraseña actual.';
+                msg.style.color = 'red'; msg.style.display = 'block'; return;
+            }
             if (nueva.length < 4) {
                 msg.textContent = 'La nueva contraseña debe tener al menos 4 caracteres.';
+                msg.style.color = 'red'; msg.style.display = 'block'; return;
+            }
+            const token = getToken();
+            if (!token) {
+                msg.textContent = 'Sesión expirada. Volvé a iniciar sesión.';
                 msg.style.color = 'red'; msg.style.display = 'block'; return;
             }
             try {
                 const r = await apiPost('changePassword', { currentPassword: actual, newPassword: nueva });
                 if (r && r.ok) {
-                    msg.textContent = 'Contraseña actualizada con éxito.';
+                    msg.textContent = '✅ Contraseña actualizada con éxito.';
                     msg.style.color = 'green';
                     document.getElementById('pass-actual').value = '';
                     document.getElementById('pass-nueva').value = '';
                 } else {
-                    msg.textContent = r && r.error ? r.error : 'Contraseña actual incorrecta.';
+                    msg.textContent = (r && r.error) ? r.error : 'Contraseña actual incorrecta.';
                     msg.style.color = 'red';
                 }
             } catch(e) {
-                msg.textContent = 'Error de conexión.';
+                msg.textContent = 'Error de conexión. Intentá nuevamente.';
                 msg.style.color = 'red';
             }
             msg.style.display = 'block';
-            setTimeout(() => msg.style.display = 'none', 3500);
+            setTimeout(() => msg.style.display = 'none', 4000);
         }
 
         async function guardarUsuario(e) {
