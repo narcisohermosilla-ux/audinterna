@@ -150,9 +150,9 @@
             <li id="menu-seguridad" style="display: none;"><a onclick="cambiarVista('seguridad')"><i class="fa-solid fa-shield-halved"></i> Seguridad & Monitoreo</a></li>
             <li id="menu-riesgos" style="display: none;"><a onclick="cambiarVista('riesgos')"><i class="fa-solid fa-chess-board"></i> Matriz de Riesgos</a></li>
             <li id="menu-bitacora" style="display: none;"><a href="bitacora_auditoria.html"><i class="fa-solid fa-clipboard-list"></i> Bitácora de Auditoría</a></li>
-            <li id="menu-configuracion"><a onclick="cambiarVista('configuracion')"><i class="fa-solid fa-gear"></i> Configuración</a></li>
             <li id="menu-audinterna" style="display:none"><a onclick="cambiarVista('audinterna');return false;">🔍 Auditoría Interna</a></li>
-            </ul>
+            <li id="menu-configuracion"><a onclick="cambiarVista('configuracion')"><i class="fa-solid fa-gear"></i> Configuración</a></li>
+        </ul>
         <div class="sidebar-footer">
             <div class="credito-dev">Desarrollado por Narciso Hermosilla</div>
         </div>
@@ -317,7 +317,7 @@
                             <label>Asignar Herramientas / Módulos permitidos:</label>
                             <div class="checkbox-group">
                                 <label><input type="checkbox" name="herramientas" value="logistico"> 📦 Centro Logístico</label>
-                                <label><input type="checkbox" name="herramientas" value="audinterna"> 🔍 Auditoría Interna (Inventarios)</label>
+                                <label><input type="checkbox" name="herramientas" value="audinterna"> 📦 Centro Logístico</label>
                                 <label><input type="checkbox" name="herramientas" value="ventas"> 🏪 Puntos de Ventas</label>
                                 <label><input type="checkbox" name="herramientas" value="financiera"> 📊 Financiera Contable</label>
                                 <label><input type="checkbox" name="herramientas" value="equipo"> 👥 Gestión de Equipo</label>
@@ -352,8 +352,7 @@
         </section>
 
     </main>
-
-    <script>
+<script>
 var API = 'https://rklqmqofnsaafcfwuoxf.supabase.co/functions/v1/api';
 var usuarioActual = null;
 var dbLocal = {};
@@ -361,11 +360,9 @@ var dbLocal = {};
 function getSesion() {
     try { return JSON.parse(sessionStorage.getItem('usuarioLogueado') || 'null'); } catch(e) { return null; }
 }
-
 function getToken() {
     var s = getSesion(); return s ? s.token : null;
 }
-
 function apiPost(action, params) {
     params = params || {};
     return new Promise(function(resolve, reject) {
@@ -376,11 +373,7 @@ function apiPost(action, params) {
             if (xhr.readyState !== 4) return;
             try {
                 var r = JSON.parse(xhr.responseText);
-                if (xhr.status === 401) {
-                    sessionStorage.removeItem('usuarioLogueado');
-                    window.location.href = 'login.html';
-                    return;
-                }
+                if (xhr.status === 401) { sessionStorage.removeItem('usuarioLogueado'); window.location.href = 'login.html'; return; }
                 resolve(r);
             } catch(e) { reject(e); }
         };
@@ -389,90 +382,16 @@ function apiPost(action, params) {
         xhr.send(JSON.stringify(body));
     });
 }
-
 function registrarBitacora(accion, modulo, detalle) {
     apiPost('log', { accion: accion, modulo: modulo || 'Dashboard', detalle: detalle || '' }).catch(function(){});
 }
-
 function mostrarToast(msg) {
     var t = document.createElement('div');
     t.textContent = msg;
-    t.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#333;color:#fff;padding:12px 20px;border-radius:8px;z-index:9999;font-size:.9rem;max-width:300px';
+    t.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#333;color:#fff;padding:12px 20px;border-radius:8px;z-index:9999;font-size:.9rem';
     document.body.appendChild(t);
-    setTimeout(function(){ document.body.removeChild(t); }, 3000);
+    setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); }, 3000);
 }
-
-document.addEventListener('DOMContentLoaded', function() {
-    var sesion = getSesion();
-    if (!sesion || !sesion.token) { window.location.href = 'login.html'; return; }
-    usuarioActual = sesion;
-
-    // Mostrar datos del usuario
-    var elNombre = document.getElementById('nombre-usuario');
-    var elRol = document.getElementById('rol-usuario-texto');
-    if (elNombre) elNombre.textContent = usuarioActual.nombre || usuarioActual.usuario || 'Usuario';
-    var esAdmin = usuarioActual.rol === 'admin' || usuarioActual.rol === 'superusuario';
-    if (elRol) elRol.textContent = esAdmin ? 'Administrador' : 'Auditor';
-
-    // Cargar herramientas desde Supabase para tener siempre los datos frescos
-    function aplicarHerramientas(herramientas) {
-        herramientas = herramientas || [];
-        usuarioActual.herramientas = herramientas;
-
-        // Mostrar menús
-        herramientas.forEach(function(h) {
-            var el = document.getElementById('menu-' + h);
-            if (el) el.style.display = 'block';
-        });
-
-        // Panel admin
-        if (esAdmin) {
-            var panelAdmin = document.getElementById('panel-admin');
-            if (panelAdmin) panelAdmin.classList.remove('admin-only');
-            var menuBitacora = document.getElementById('menu-bitacora');
-            if (menuBitacora) menuBitacora.style.display = 'block';
-            var menuAudinterna = document.getElementById('menu-audinterna');
-            if (menuAudinterna) menuAudinterna.style.display = 'block';
-            // Mostrar todos los menús para admin
-            ['logistico','audinterna','ventas','financiera','equipo','activos','seguridad','riesgos'].forEach(function(h) {
-                var el = document.getElementById('menu-' + h);
-                if (el) el.style.display = 'block';
-            });
-            cargarUsuarios();
-        }
-
-        registrarBitacora('ACCESO', 'Dashboard', 'Acceso al panel principal');
-
-        // Navegar a la primera vista disponible
-        var vistaParam = new URLSearchParams(window.location.search).get('vista');
-        var todasHerramientas = esAdmin ? ['logistico','audinterna','ventas','financiera','equipo','activos','seguridad','riesgos'] : herramientas;
-        if (vistaParam === 'configuracion') {
-            cambiarVista('configuracion');
-        } else if (vistaParam && todasHerramientas.includes(vistaParam)) {
-            cambiarVista(vistaParam);
-        } else if (todasHerramientas.length > 0) {
-            cambiarVista(todasHerramientas[0]);
-        } else {
-            cambiarVista('configuracion');
-        }
-    }
-
-    // Si el admin no tiene herramientas en sesión, cargarlas desde Supabase
-    var herramientasSesion = usuarioActual.herramientas || [];
-    if (esAdmin && herramientasSesion.length === 0) {
-        apiPost('listUsers').then(function(r) {
-            if (r && r.data) {
-                var yo = r.data.find(function(u){ return u.usuario === usuarioActual.usuario; });
-                aplicarHerramientas(yo ? (yo.herramientas || []) : []);
-            } else {
-                aplicarHerramientas([]);
-            }
-        }).catch(function(){ aplicarHerramientas([]); });
-    } else {
-        aplicarHerramientas(herramientasSesion);
-    }
-});
-
 function cambiarVista(id) {
     if (id === 'audinterna') { window.location.href = 'auditoria.html'; return; }
     document.querySelectorAll('.view-section').forEach(function(s){ s.style.display = 'none'; });
@@ -482,13 +401,11 @@ function cambiarVista(id) {
     var menu = document.getElementById('menu-' + id);
     if (menu) { var a = menu.querySelector('a'); if (a) a.classList.add('active'); }
 }
-
 function cerrarSesion() {
     apiPost('logout').catch(function(){});
     sessionStorage.removeItem('usuarioLogueado');
     window.location.href = 'login.html';
 }
-
 function cambiarContrasenaPerfil() {
     var actual = document.getElementById('pass-actual').value;
     var nueva = document.getElementById('pass-nueva').value;
@@ -498,7 +415,7 @@ function cambiarContrasenaPerfil() {
     if (nueva.length < 4) { msg.textContent = 'La nueva contraseña debe tener al menos 4 caracteres.'; msg.style.color = 'red'; msg.style.display = 'block'; return; }
     apiPost('changePassword', { currentPassword: actual, newPassword: nueva }).then(function(r) {
         if (r && r.ok) {
-            msg.textContent = '✅ Contraseña actualizada con éxito.'; msg.style.color = 'green';
+            msg.textContent = '✅ Contraseña actualizada.'; msg.style.color = 'green';
             document.getElementById('pass-actual').value = '';
             document.getElementById('pass-nueva').value = '';
         } else {
@@ -506,46 +423,32 @@ function cambiarContrasenaPerfil() {
         }
         msg.style.display = 'block';
         setTimeout(function(){ msg.style.display = 'none'; }, 4000);
-    }).catch(function() {
-        msg.textContent = 'Error de conexión.'; msg.style.color = 'red'; msg.style.display = 'block';
-    });
+    }).catch(function(){ msg.textContent = 'Error de conexión.'; msg.style.color = 'red'; msg.style.display = 'block'; });
 }
-
 function cargarUsuarios() {
     apiPost('listUsers').then(function(r) {
         if (!r || !r.data) return;
         dbLocal = {};
-        r.data.forEach(function(u) {
-            dbLocal[u.usuario] = { nombre: u.nombre, rol: u.rol, herramientas: u.herramientas || [] };
-        });
+        r.data.forEach(function(u) { dbLocal[u.usuario] = { nombre: u.nombre, rol: u.rol, herramientas: u.herramientas || [] }; });
         renderTablaUsuarios();
     }).catch(function(){});
 }
-
 function renderTablaUsuarios() {
     var tbody = document.getElementById('tabla-usuarios');
     if (!tbody) return;
     tbody.innerHTML = '';
-    var nombres = {
-        'logistico':'📦 Logística','audinterna':'🔍 Auditoría Interna',
-        'ventas':'🏪 Ventas','financiera':'📊 Financiera',
-        'equipo':'👥 Equipo','activos':'💻 Activos',
-        'seguridad':'🔒 Seguridad','riesgos':'🎯 Riesgos'
-    };
+    var nombres = { 'logistico':'📦 Logística','audinterna':'🔍 Auditoría','ventas':'🏪 Ventas','financiera':'📊 Financiera','equipo':'👥 Equipo','activos':'💻 Activos','seguridad':'🔒 Seguridad','riesgos':'🎯 Riesgos' };
     Object.keys(dbLocal).forEach(function(id) {
         var d = dbLocal[id];
         var tr = document.createElement('tr');
         var herrs = (d.herramientas || []).map(function(h){ return nombres[h] || h; }).join(', ') || 'Ninguna';
-        tr.innerHTML = '<td><strong>' + id + '</strong></td><td>' + (d.nombre||id) + '</td><td>' + (d.rol||'auditor') + '</td>' +
-            '<td style="font-size:.8rem">' + herrs + '</td>' +
-            '<td><button onclick="editarUsuario('' + id + '')" style="margin-right:6px;padding:4px 10px;border:none;border-radius:4px;background:#0056b3;color:#fff;cursor:pointer;font-size:.8rem">Editar</button>' +
-            (id !== usuarioActual.usuario ? '<button onclick="eliminarUsuario('' + id + '')" style="padding:4px 10px;border:none;border-radius:4px;background:#dc3545;color:#fff;cursor:pointer;font-size:.8rem">Eliminar</button>' : '') +
-            '</td>';
+        var btnEditar = '<button onclick="editarUsuario('' + id + '')" style="margin-right:6px;padding:4px 10px;border:none;border-radius:4px;background:#0056b3;color:#fff;cursor:pointer;font-size:.8rem">Editar</button>';
+        var btnEliminar = id !== usuarioActual.usuario ? '<button onclick="eliminarUsuario('' + id + '')" style="padding:4px 10px;border:none;border-radius:4px;background:#dc3545;color:#fff;cursor:pointer;font-size:.8rem">Eliminar</button>' : '';
+        tr.innerHTML = '<td><strong>' + id + '</strong></td><td>' + (d.nombre||id) + '</td><td>' + (d.rol||'auditor') + '</td><td style="font-size:.8rem">' + herrs + '</td><td>' + btnEditar + btnEliminar + '</td>';
         tbody.appendChild(tr);
     });
     if (!tbody.hasChildNodes()) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#888">No hay funcionarios.</td></tr>';
 }
-
 function editarUsuario(id) {
     var d = dbLocal[id];
     if (!d) return;
@@ -553,16 +456,13 @@ function editarUsuario(id) {
     document.getElementById('crear-id').disabled = true;
     document.getElementById('crear-nombre').value = d.nombre || id;
     document.getElementById('crear-pass').value = '';
-    document.querySelectorAll('input[name="herramientas"]').forEach(function(cb) {
-        cb.checked = (d.herramientas || []).includes(cb.value);
-    });
+    document.querySelectorAll('input[name="herramientas"]').forEach(function(cb){ cb.checked = (d.herramientas||[]).includes(cb.value); });
     document.getElementById('modo-edicion').value = 'editar';
     document.getElementById('form-titulo-modo').textContent = 'Editar Funcionario: ' + id;
     document.getElementById('btn-guardar-usuario').textContent = 'Guardar Cambios';
     document.getElementById('btn-cancelar-edicion').style.display = 'inline-block';
     document.getElementById('form-usuario').scrollIntoView({ behavior: 'smooth' });
 }
-
 function cancelarEdicion() {
     document.getElementById('form-usuario').reset();
     document.getElementById('crear-id').disabled = false;
@@ -571,51 +471,86 @@ function cancelarEdicion() {
     document.getElementById('btn-guardar-usuario').textContent = 'Registrar Funcionario';
     document.getElementById('btn-cancelar-edicion').style.display = 'none';
 }
-
 function guardarUsuario(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
     var id = document.getElementById('crear-id').value.toLowerCase().trim();
     var nombre = document.getElementById('crear-nombre').value.trim();
     var pass = document.getElementById('crear-pass').value;
     var modo = document.getElementById('modo-edicion').value;
     var herramientas = [];
     document.querySelectorAll('input[name="herramientas"]:checked').forEach(function(cb){ herramientas.push(cb.value); });
-
-    if (!id || !nombre) { alert('Ingresá ID y nombre del funcionario.'); return; }
-    if (modo === 'crear' && !pass) { alert('Ingresá una contraseña para el nuevo funcionario.'); return; }
-
+    if (!id || !nombre) { alert('Ingresá ID y nombre.'); return; }
+    if (modo === 'crear' && !pass) { alert('Ingresá una contraseña.'); return; }
     if (modo === 'crear') {
         apiPost('createUser', { usuario: id, password: pass, nombre: nombre, rol: 'auditor', herramientas: JSON.stringify(herramientas) }).then(function(r) {
-            if (r && r.ok) {
-                mostrarToast('✅ Funcionario creado exitosamente.');
-                registrarBitacora('CREAR', 'Configuración', 'Funcionario creado: ' + id);
-                cancelarEdicion();
-                cargarUsuarios();
-            } else { alert('Error: ' + (r && r.error ? r.error : 'No se pudo crear.')); }
+            if (r && r.ok) { mostrarToast('✅ Funcionario creado.'); cancelarEdicion(); cargarUsuarios(); }
+            else { alert('Error: ' + (r && r.error ? r.error : 'No se pudo crear.')); }
         }).catch(function(){ alert('Error de conexión.'); });
     } else {
         var promesas = [apiPost('updateUser', { usuario: id, nombre: nombre, herramientas: JSON.stringify(herramientas) })];
         if (pass) promesas.push(apiPost('resetPassword', { usuario: id, newPassword: pass }));
-        Promise.all(promesas).then(function() {
-            mostrarToast('✅ Funcionario actualizado.');
-            registrarBitacora('EDITAR', 'Configuración', 'Funcionario editado: ' + id);
-            cancelarEdicion();
-            cargarUsuarios();
-        }).catch(function(){ alert('Error de conexión.'); });
+        Promise.all(promesas).then(function(){ mostrarToast('✅ Funcionario actualizado.'); cancelarEdicion(); cargarUsuarios(); }).catch(function(){ alert('Error de conexión.'); });
     }
 }
-
 function eliminarUsuario(id) {
     if (id === usuarioActual.usuario) { alert('No podés eliminar tu propio usuario.'); return; }
-    if (!confirm('¿Eliminar al funcionario "' + id + '"? Esta acción no se puede deshacer.')) return;
+    if (!confirm('¿Eliminar al funcionario "' + id + '"?')) return;
     apiPost('setUserEstado', { usuario: id, estado: 'inactivo' }).then(function(r) {
-        if (r && r.ok) {
-            mostrarToast('✅ Funcionario eliminado.');
-            registrarBitacora('ELIMINAR', 'Configuración', 'Funcionario eliminado: ' + id);
-            cargarUsuarios();
-        }
+        if (r && r.ok) { mostrarToast('✅ Funcionario eliminado.'); cargarUsuarios(); }
     }).catch(function(){ alert('Error de conexión.'); });
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    var sesion = getSesion();
+    if (!sesion || !sesion.token) { window.location.href = 'login.html'; return; }
+    usuarioActual = sesion;
+
+    var elNombre = document.getElementById('nombre-usuario');
+    var elRol = document.getElementById('rol-usuario-texto');
+    if (elNombre) elNombre.textContent = usuarioActual.nombre || usuarioActual.usuario || 'Usuario';
+    var esAdmin = usuarioActual.rol === 'admin' || usuarioActual.rol === 'superusuario';
+    if (elRol) elRol.textContent = esAdmin ? 'Administrador' : 'Auditor';
+
+    function aplicarHerramientas(herramientas) {
+        herramientas = herramientas || [];
+        usuarioActual.herramientas = herramientas;
+        var todas = esAdmin ? ['logistico','audinterna','ventas','financiera','equipo','activos','seguridad','riesgos'] : herramientas;
+        todas.forEach(function(h) {
+            var el = document.getElementById('menu-' + h);
+            if (el) el.style.display = 'block';
+        });
+        if (esAdmin) {
+            var pa = document.getElementById('panel-admin');
+            if (pa) pa.classList.remove('admin-only');
+            var mb = document.getElementById('menu-bitacora');
+            if (mb) mb.style.display = 'block';
+            var ma = document.getElementById('menu-audinterna');
+            if (ma) ma.style.display = 'block';
+            cargarUsuarios();
+        }
+        registrarBitacora('ACCESO', 'Dashboard', 'Acceso al panel principal');
+        var vistaParam = new URLSearchParams(window.location.search).get('vista');
+        if (vistaParam === 'configuracion') {
+            cambiarVista('configuracion');
+        } else if (todas.length > 0) {
+            cambiarVista(todas[0]);
+        } else {
+            cambiarVista('configuracion');
+        }
+    }
+
+    var herramientasSesion = usuarioActual.herramientas || [];
+    if (herramientasSesion.length === 0) {
+        apiPost('listUsers').then(function(r) {
+            if (r && r.data) {
+                var yo = r.data.filter(function(u){ return u.usuario === usuarioActual.usuario; })[0];
+                aplicarHerramientas(yo ? (yo.herramientas || []) : []);
+            } else { aplicarHerramientas([]); }
+        }).catch(function(){ aplicarHerramientas([]); });
+    } else {
+        aplicarHerramientas(herramientasSesion);
+    }
+});
 </script>
 </body>
 </html>
