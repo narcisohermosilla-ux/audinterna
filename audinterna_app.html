@@ -274,8 +274,24 @@
 <body>
 <div style="position:fixed;bottom:4px;right:6px;z-index:2147483647;font:11px monospace;color:#9aa3b5;background:rgba(255,255,255,.85);padding:2px 6px;border-radius:4px;pointer-events:none;">v-2026-09-08m-firma-plan-seguimiento</div>
 
-<div id="loginScreen" style="display:none;">
-  <!-- Login deshabilitado: acceso via plataforma principal -->
+<!-- Barra de navegación de la plataforma (visible solo con ?token=) -->
+<div id="barra-plataforma" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#1a252f;color:white;padding:8px 20px;display:none;align-items:center;justify-content:space-between;border-bottom:2px solid #0056b3;">
+  <span style="font-size:.9rem;font-weight:600;">🔍 Auditoría Interna — Inventarios</span>
+  <a href="index.html" style="background:rgba(255,255,255,.15);color:white;border:1px solid rgba(255,255,255,.3);padding:5px 14px;border-radius:6px;font-size:.82rem;text-decoration:none;">← Volver al Panel</a>
+</div>
+
+<div id="loginScreen">
+  <div class="login-box">
+    <h1>Punto Farma · Sistema Corporativo</h1>
+    <p class="login-inicio-tag">Sistema Corporativo Inicio</p>
+    <p>Iniciá sesión para continuar</p>
+    <label>Usuario</label>
+    <input type="text" id="loginUsuario" autocomplete="username">
+    <label>Contraseña</label>
+    <input type="password" id="loginPassword" autocomplete="current-password">
+    <button id="btnLogin">Ingresar</button>
+    <div id="loginError"></div>
+  </div>
 </div>
 
 <!-- ============ PLAN DE SEGUIMIENTO — vista pública (link con token, sin login) ============ -->
@@ -1680,7 +1696,7 @@ function requireLoginAgain(motivo){
   clearSessionStorage();
   document.getElementById('appShell').classList.add('hidden');
   document.getElementById('loginScreen').classList.remove('hidden');
-  if(motivo) (document.getElementById('loginError')||{}).textContent = motivo;
+  if(motivo) document.getElementById('loginError').textContent = motivo;
 }
 
 function renderSessionBar(){
@@ -1692,17 +1708,17 @@ function renderSessionBar(){
 }
 
 async function doLogin(){
-  const usuario = (document.getElementById('loginUsuario')||{value:''}).value.trim();
-  const password = (document.getElementById('loginPassword')||{value:''}).value;
-  (document.getElementById('loginError')||{}).textContent = '';
-  if(!usuario || !password){ (document.getElementById('loginError')||{}).textContent='Ingresá usuario y contraseña'; return; }
+  const usuario = document.getElementById('loginUsuario').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  document.getElementById('loginError').textContent = '';
+  if(!usuario || !password){ document.getElementById('loginError').textContent='Ingresá usuario y contraseña'; return; }
   const res = await apiPost('login', { usuario, password });
   if(res && res.ok){
     session = { token: res.token, usuario: res.usuario, rol: res.rol };
     saveSessionToStorage(session);
     await enterApp();
   } else {
-    (document.getElementById('loginError')||{}).textContent = (res && res.error) || 'No se pudo iniciar sesión';
+    document.getElementById('loginError').textContent = (res && res.error) || 'No se pudo iniciar sesión';
   }
 }
 async function doLogout(){ await apiPost('logout', {}); requireLoginAgain('Sesión cerrada'); }
@@ -1710,6 +1726,13 @@ async function doLogout(){ await apiPost('logout', {}); requireLoginAgain('Sesi�
 async function enterApp(){
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('appShell').classList.remove('hidden');
+  // Mostrar barra de navegación si viene desde la plataforma
+  if(new URLSearchParams(window.location.search).get('token')){
+    const barra = document.getElementById('barra-plataforma');
+    if(barra) barra.style.display = 'flex';
+    // Agregar margen top al appShell para no tapar el contenido
+    document.getElementById('appShell').style.marginTop = '40px';
+  }
   renderSessionBar();
   // cargarTiposEstado() y cargarBD() son independientes entre sí (una trae
   // los tipos fijos de la Planilla de Descuento, la otra los catálogos
@@ -1721,56 +1744,32 @@ async function enterApp(){
 }
 
 async function boot(){
-  // 1) Token externo desde la plataforma principal (?token=xxx)
+  // 1. Token externo desde la plataforma principal (?token=xxx)
   const urlToken = new URLSearchParams(window.location.search).get('token');
   if(urlToken){
-    // Entrar directo con el token — fue validado por la plataforma al hacer login
-    // Solo obtener datos del usuario para mostrar nombre/rol
-    try {
-      const res = await apiPost('validarSesion', { token: urlToken });
-      if(res && res.ok){
-        session = { token: urlToken, usuario: res.usuario, rol: res.rol };
-        saveSessionToStorage(session);
-        await enterApp();
-        return;
-      }
-    } catch(e) {}
-    // Si validarSesion falla, redirigir al login para obtener token nuevo
-    sessionStorage.removeItem('usuarioLogueado');
-    window.location.href = 'login.html';
+    const res = await apiPost('validarSesion', { token: urlToken });
+    if(res && res.ok){
+      session = { token: urlToken, usuario: res.usuario, rol: res.rol };
+      saveSessionToStorage(session);
+      await enterApp();
+      return;
+    }
+    // Token inválido — mostrar login normal
     return;
   }
-  // 2) Link público de "Plan de Seguimiento" (?plan=<token>)
+  // 2. Link público de "Plan de Seguimiento"
   const planToken = window.__PFUNIF_PLAN_TOKEN__;
   if(planToken && !/PLACEHOLDER/.test(planToken)){
     await iniciarModoPlanPublico(planToken);
     return;
   }
-  // 3) Sesión guardada en storage
+  // 3. Sesión guardada localmente
   const s = loadSessionFromStorage();
-  if(s && s.token){
-    try {
-      const res = await apiPost('validarSesion', { token: s.token });
-      if(res && res.ok){ session = s; await enterApp(); return; }
-    } catch(e) {}
-  }
-  // 4) Sin sesión — redirigir al login de la plataforma
-  sessionStorage.removeItem('usuarioLogueado');
-  window.location.href = 'login.html';
+  if(!s){ return; }
+  const res = await apiPost('validarSesion', { token: s.token });
+  if(res && res.ok){ session = s; await enterApp(); }
+  else { clearSessionStorage(); }
 }
-
-// Mostrar barra de navegación si viene desde la plataforma
-(function(){
-  const volver = new URLSearchParams(window.location.search).get('volver');
-  if(volver){
-    const bar = document.getElementById('plataforma-topbar');
-    if(bar){
-      bar.style.display = 'flex';
-      const btnVolver = document.getElementById('btn-volver-plataforma');
-      if(btnVolver) btnVolver.href = volver;
-    }
-  }
-})();
 
 /* ============================================================
  *  USUARIOS (admin) — compartido por los 3 módulos
@@ -6981,12 +6980,9 @@ async function audCrearChecklist(){
 /* ============================================================
  *  EVENTOS
  * ============================================================ */
-// Login integrado con plataforma — elementos opcionales
-const _btnLogin = document.getElementById('btnLogin');
-if(_btnLogin) _btnLogin.addEventListener('click', doLogin);
+document.getElementById('btnLogin').addEventListener('click', doLogin);
 ['loginUsuario','loginPassword'].forEach(id=>{
-  const _el = document.getElementById(id);
-  if(_el) _el.addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+  document.getElementById(id).addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
 });
 
 function inicializarMembretes(){
