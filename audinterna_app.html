@@ -1680,7 +1680,7 @@ function requireLoginAgain(motivo){
   clearSessionStorage();
   document.getElementById('appShell').classList.add('hidden');
   document.getElementById('loginScreen').classList.remove('hidden');
-  if(motivo) document.getElementById('loginError').textContent = motivo;
+  if(motivo) (document.getElementById('loginError')||{}).textContent = motivo;
 }
 
 function renderSessionBar(){
@@ -1692,17 +1692,17 @@ function renderSessionBar(){
 }
 
 async function doLogin(){
-  const usuario = document.getElementById('loginUsuario').value.trim();
-  const password = document.getElementById('loginPassword').value;
-  document.getElementById('loginError').textContent = '';
-  if(!usuario || !password){ document.getElementById('loginError').textContent='Ingresá usuario y contraseña'; return; }
+  const usuario = (document.getElementById('loginUsuario')||{value:''}).value.trim();
+  const password = (document.getElementById('loginPassword')||{value:''}).value;
+  (document.getElementById('loginError')||{}).textContent = '';
+  if(!usuario || !password){ (document.getElementById('loginError')||{}).textContent='Ingresá usuario y contraseña'; return; }
   const res = await apiPost('login', { usuario, password });
   if(res && res.ok){
     session = { token: res.token, usuario: res.usuario, rol: res.rol };
     saveSessionToStorage(session);
     await enterApp();
   } else {
-    document.getElementById('loginError').textContent = (res && res.error) || 'No se pudo iniciar sesión';
+    (document.getElementById('loginError')||{}).textContent = (res && res.error) || 'No se pudo iniciar sesión';
   }
 }
 async function doLogout(){ await apiPost('logout', {}); requireLoginAgain('Sesión cerrada'); }
@@ -6981,9 +6981,12 @@ async function audCrearChecklist(){
 /* ============================================================
  *  EVENTOS
  * ============================================================ */
-document.getElementById('btnLogin').addEventListener('click', doLogin);
+// Login integrado con plataforma — elementos opcionales
+const _btnLogin = document.getElementById('btnLogin');
+if(_btnLogin) _btnLogin.addEventListener('click', doLogin);
 ['loginUsuario','loginPassword'].forEach(id=>{
-  document.getElementById(id).addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+  const _el = document.getElementById(id);
+  if(_el) _el.addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
 });
 
 function inicializarMembretes(){
