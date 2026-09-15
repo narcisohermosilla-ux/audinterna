@@ -3,79 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Auditoría Interna - Inventarios</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',sans-serif}
-body{background:#0d1620;display:flex;flex-direction:column;height:100vh}
-.topbar{background:#1a252f;color:white;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;border-bottom:2px solid #0056b3}
-.topbar h1{font-size:1rem;font-weight:600}
-.badge{background:#0056b3;font-size:.68rem;padding:2px 8px;border-radius:12px;font-weight:600;margin-left:10px}
-.btn-volver{background:rgba(255,255,255,.12);color:white;border:1px solid rgba(255,255,255,.25);padding:7px 16px;border-radius:6px;cursor:pointer;font-size:.82rem;text-decoration:none}
-.btn-volver:hover{background:rgba(255,255,255,.22)}
-.frame-wrapper{flex:1;overflow:hidden;position:relative}
-iframe{width:100%;height:100%;border:none;display:block}
-.loading{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#aaa;font-size:1rem}
-</style>
+<title>Redirigiendo...</title>
 </head>
 <body>
-
 <script>
 // Verificar sesión
 var _s = null;
 try { _s = JSON.parse(sessionStorage.getItem('usuarioLogueado') || 'null'); } catch(e) {}
-if (!_s || !_s.token) { window.location.href = 'login.html'; }
-</script>
-
-<div class="topbar">
-  <div style="display:flex;align-items:center">
-    <h1>🔍 Auditoría Interna — Inventarios</h1>
-    <span class="badge">INTEGRADO</span>
-  </div>
-  <a href="index.html" class="btn-volver">← Volver al Panel Principal</a>
-</div>
-
-<div class="frame-wrapper">
-  <div class="loading" id="loadMsg">Cargando sistema...</div>
-  <iframe id="audFrame" src="" title="Sistema de Auditoría Interna"></iframe>
-</div>
-
-<script>
-var API = 'https://rklqmqofnsaafcfwuoxf.supabase.co/functions/v1/api';
-
-function cargarApp(token) {
-    var frame = document.getElementById('audFrame');
-    frame.src = 'audinterna_app.html?token=' + encodeURIComponent(token);
-    frame.onload = function() {
-        document.getElementById('loadMsg').style.display = 'none';
-    };
+if (!_s || !_s.token) {
+    window.location.href = 'login.html';
+} else {
+    // Redirigir directo al sistema con el token en la URL
+    window.location.href = 'audinterna_app.html?token=' + encodeURIComponent(_s.token) + '&volver=index.html';
 }
-
-// Renovar sesión antes de pasar el token
-var xhr = new XMLHttpRequest();
-xhr.open('POST', API, true);
-xhr.setRequestHeader('Content-Type', 'application/json');
-xhr.onreadystatechange = function() {
-    if (xhr.readyState !== 4) return;
-    try {
-        var r = JSON.parse(xhr.responseText);
-        if (r && r.ok && r.token) {
-            // Actualizar sesión con token nuevo
-            var sesionActualizada = JSON.parse(sessionStorage.getItem('usuarioLogueado') || '{}');
-            sesionActualizada.token = r.token;
-            sessionStorage.setItem('usuarioLogueado', JSON.stringify(sesionActualizada));
-            cargarApp(r.token);
-        } else {
-            // Usar el token existente
-            cargarApp(_s ? _s.token : '');
-        }
-    } catch(e) {
-        cargarApp(_s ? _s.token : '');
-    }
-};
-// Re-login automático con las credenciales guardadas para obtener token fresco
-// Como no tenemos la contraseña, usamos el token existente directo
-cargarApp(_s ? _s.token : '');
 </script>
-
 </body>
 </html>

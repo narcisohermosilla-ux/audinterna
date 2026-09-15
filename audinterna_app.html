@@ -1759,6 +1759,19 @@ async function boot(){
   window.location.href = 'login.html';
 }
 
+// Mostrar barra de navegación si viene desde la plataforma
+(function(){
+  const volver = new URLSearchParams(window.location.search).get('volver');
+  if(volver){
+    const bar = document.getElementById('plataforma-topbar');
+    if(bar){
+      bar.style.display = 'flex';
+      const btnVolver = document.getElementById('btn-volver-plataforma');
+      if(btnVolver) btnVolver.href = volver;
+    }
+  }
+})();
+
 /* ============================================================
  *  USUARIOS (admin) — compartido por los 3 módulos
  * ============================================================ */
