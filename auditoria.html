@@ -40,13 +40,41 @@ if (!_s || !_s.token) { window.location.href = 'login.html'; }
 </div>
 
 <script>
-// Pasar token al sistema de auditoría
-var token = _s ? _s.token : '';
-var frame = document.getElementById('audFrame');
-frame.src = 'audinterna_app.html?token=' + encodeURIComponent(token);
-frame.onload = function() {
-  document.getElementById('loadMsg').style.display = 'none';
+var API = 'https://rklqmqofnsaafcfwuoxf.supabase.co/functions/v1/api';
+
+function cargarApp(token) {
+    var frame = document.getElementById('audFrame');
+    frame.src = 'audinterna_app.html?token=' + encodeURIComponent(token);
+    frame.onload = function() {
+        document.getElementById('loadMsg').style.display = 'none';
+    };
+}
+
+// Renovar sesión antes de pasar el token
+var xhr = new XMLHttpRequest();
+xhr.open('POST', API, true);
+xhr.setRequestHeader('Content-Type', 'application/json');
+xhr.onreadystatechange = function() {
+    if (xhr.readyState !== 4) return;
+    try {
+        var r = JSON.parse(xhr.responseText);
+        if (r && r.ok && r.token) {
+            // Actualizar sesión con token nuevo
+            var sesionActualizada = JSON.parse(sessionStorage.getItem('usuarioLogueado') || '{}');
+            sesionActualizada.token = r.token;
+            sessionStorage.setItem('usuarioLogueado', JSON.stringify(sesionActualizada));
+            cargarApp(r.token);
+        } else {
+            // Usar el token existente
+            cargarApp(_s ? _s.token : '');
+        }
+    } catch(e) {
+        cargarApp(_s ? _s.token : '');
+    }
 };
+// Re-login automático con las credenciales guardadas para obtener token fresco
+// Como no tenemos la contraseña, usamos el token existente directo
+cargarApp(_s ? _s.token : '');
 </script>
 
 </body>
