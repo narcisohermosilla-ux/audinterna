@@ -1747,14 +1747,28 @@ async function boot(){
   // 1. Token externo desde la plataforma principal (?token=xxx)
   const urlToken = new URLSearchParams(window.location.search).get('token');
   if(urlToken){
-    const res = await apiPost('validarSesion', { token: urlToken });
-    if(res && res.ok){
-      session = { token: urlToken, usuario: res.usuario, rol: res.rol };
-      saveSessionToStorage(session);
-      await enterApp();
-      return;
-    }
+    // Setear session ANTES de llamar apiPost para que lo use correctamente
+    session = { token: urlToken, usuario: '', rol: '' };
+    try {
+      const res = await fetch(window.__PF_SUPABASE_FUNCTION_URL__, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': window.__PF_SUPABASE_ANON_KEY__,
+          'Authorization': 'Bearer ' + window.__PF_SUPABASE_ANON_KEY__
+        },
+        body: JSON.stringify({ action: 'validarSesion', token: urlToken })
+      });
+      const data = await res.json();
+      if(data && data.ok){
+        session = { token: urlToken, usuario: data.usuario, rol: data.rol };
+        saveSessionToStorage(session);
+        await enterApp();
+        return;
+      }
+    } catch(e) {}
     // Token inválido — mostrar login normal
+    session = null;
     return;
   }
   // 2. Link público de "Plan de Seguimiento"
@@ -1766,9 +1780,21 @@ async function boot(){
   // 3. Sesión guardada localmente
   const s = loadSessionFromStorage();
   if(!s){ return; }
-  const res = await apiPost('validarSesion', { token: s.token });
-  if(res && res.ok){ session = s; await enterApp(); }
-  else { clearSessionStorage(); }
+  session = s;
+  try {
+    const res = await fetch(window.__PF_SUPABASE_FUNCTION_URL__, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': window.__PF_SUPABASE_ANON_KEY__,
+        'Authorization': 'Bearer ' + window.__PF_SUPABASE_ANON_KEY__
+      },
+      body: JSON.stringify({ action: 'validarSesion', token: s.token })
+    });
+    const data = await res.json();
+    if(data && data.ok){ session = s; await enterApp(); }
+    else { session = null; clearSessionStorage(); }
+  } catch(e) { session = null; clearSessionStorage(); }
 }
 
 /* ============================================================
