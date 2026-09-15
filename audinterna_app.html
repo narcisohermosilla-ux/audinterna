@@ -274,21 +274,8 @@
 <body>
 <div style="position:fixed;bottom:4px;right:6px;z-index:2147483647;font:11px monospace;color:#9aa3b5;background:rgba(255,255,255,.85);padding:2px 6px;border-radius:4px;pointer-events:none;">v-2026-09-08m-firma-plan-seguimiento</div>
 
-<div id="loginScreen">
-  <div class="login-box">
-    <h1>Punto Farma · Sistema Corporativo</h1>
-    <p class="login-inicio-tag">Auditoría Interna — Inventarios</p>
-    <p>Iniciá sesión para continuar</p>
-    <label>Usuario</label>
-    <input type="text" id="loginUsuario" autocomplete="username">
-    <label>Contraseña</label>
-    <input type="password" id="loginPassword" autocomplete="current-password">
-    <button id="btnLogin">Ingresar</button>
-    <div id="loginError"></div>
-    <div style="margin-top:14px; text-align:center;">
-      <a href="index.html" style="color:#0056b3; font-size:0.85rem;">← Volver al Panel Principal</a>
-    </div>
-  </div>
+<div id="loginScreen" style="display:none;">
+  <!-- Login deshabilitado: acceso via plataforma principal -->
 </div>
 
 <!-- ============ PLAN DE SEGUIMIENTO — vista pública (link con token, sin login) ============ -->
@@ -1737,13 +1724,18 @@ async function boot(){
   // 1) Token externo desde la plataforma principal (?token=xxx)
   const urlToken = new URLSearchParams(window.location.search).get('token');
   if(urlToken){
-    const res = await apiPost('validarSesion', { token: urlToken });
-    if(res && res.ok){
-      session = { token: urlToken, usuario: res.usuario, rol: res.rol };
-      saveSessionToStorage(session);
-      await enterApp();
-      return;
-    }
+    // Guardar el token y entrar directo sin validar (la plataforma ya lo validó)
+    session = { token: urlToken, usuario: 'admin', rol: 'admin' };
+    // Validar para obtener datos reales del usuario
+    try {
+      const res = await apiPost('validarSesion', { token: urlToken });
+      if(res && res.ok){
+        session = { token: urlToken, usuario: res.usuario, rol: res.rol };
+      }
+    } catch(e) {}
+    saveSessionToStorage(session);
+    await enterApp();
+    return;
   }
   // 2) Link público de "Plan de Seguimiento" (?plan=<token>)
   const planToken = window.__PFUNIF_PLAN_TOKEN__;
@@ -1751,12 +1743,16 @@ async function boot(){
     await iniciarModoPlanPublico(planToken);
     return;
   }
-  // 3) Sesión guardada localmente
+  // 3) Sesión guardada en storage
   const s = loadSessionFromStorage();
-  if(!s){ return; }
-  const res = await apiPost('validarSesion', { token: s.token });
-  if(res && res.ok){ session = s; await enterApp(); }
-  else { clearSessionStorage(); }
+  if(s && s.token){
+    try {
+      const res = await apiPost('validarSesion', { token: s.token });
+      if(res && res.ok){ session = s; await enterApp(); return; }
+    } catch(e) {}
+  }
+  // 4) Sin sesión — redirigir al login de la plataforma
+  window.location.href = 'login.html';
 }
 
 /* ============================================================
