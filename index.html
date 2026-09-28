@@ -670,13 +670,41 @@
             <button class="btn outline" onclick="limpiarFormPersonal()">Cancelar</button>
           </div>
         </div>
+        <!-- Tarjeta de estadísticas Personal -->
+        <div class="card" style="margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+            <div style="display:flex;flex-direction:column;align-items:center;background:var(--color-primary,#1d4ed8);color:#fff;border-radius:10px;padding:14px 28px;min-width:120px">
+              <span style="font-size:2rem;font-weight:700;line-height:1" id="personalStatTotal">—</span>
+              <span style="font-size:0.78rem;margin-top:4px;opacity:.88">Total Personal</span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;background:#16a34a;color:#fff;border-radius:10px;padding:14px 28px;min-width:120px">
+              <span style="font-size:2rem;font-weight:700;line-height:1" id="personalStatActivos">—</span>
+              <span style="font-size:0.78rem;margin-top:4px;opacity:.88">Activos</span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;background:#dc2626;color:#fff;border-radius:10px;padding:14px 28px;min-width:120px">
+              <span style="font-size:2rem;font-weight:700;line-height:1" id="personalStatInactivos">—</span>
+              <span style="font-size:0.78rem;margin-top:4px;opacity:.88">Inactivos / Susp.</span>
+            </div>
+            <div style="flex:1;min-width:200px;max-width:320px">
+              <label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:4px;color:var(--text-secondary,#64748b)">Filtrar por Organigrama</label>
+              <select id="personalOrgFiltro" onchange="renderTablasBD()" style="width:100%;padding:7px 10px;border:1px solid var(--border,#cbd5e1);border-radius:6px;font-size:0.9rem">
+                <option value="">— Todos —</option>
+              </select>
+            </div>
+            <div id="personalStatFiltro" style="display:none;font-size:0.85rem;color:var(--text-secondary,#64748b);font-style:italic"></div>
+          </div>
+        </div>
         <div class="card">
           <div class="campo" style="max-width:420px;margin-bottom:12px">
             <label>Buscar</label>
-            <input id="personalBdBuscar" placeholder="Nombre, C.I., legajo, cargo o sucursal..." oninput="renderTablasBD()">
+            <input id="personalBdBuscar" placeholder="Nombre, C.I., legajo, cargo o sucursal..." oninput="window._personalPage=1;renderTablasBD()">
           </div>
           <div style="overflow-x:auto">
             <table id="tablaPersonal" style="min-width:900px"><thead><tr><th>Legajo</th><th>Nombre</th><th>C.I.</th><th>Sucursal / Área</th><th>Cargo</th><th>F.Ingreso</th><th>Edad</th><th>Est.</th><th></th></tr></thead><tbody></tbody></table>
+          </div>
+          <div id="personalPaginacion" style="margin-top:10px;text-align:center;display:none">
+            <span id="personalPagInfo" style="font-size:0.85rem;color:#64748b;margin-right:10px"></span>
+            <button class="btn small outline" id="personalVerMas" onclick="personalMostrarMas()">Ver más</button>
           </div>
         </div>
       </div>
@@ -2232,18 +2260,52 @@ function renderTablasBD(){
     '<button class="btn small danger" onclick="eliminarBd(\'pdv\','+p.id+')">Eliminar</button></td></tr>'
   ).join('') || '<tr><td colspan="7" style="color:#888">Sin registros</td></tr>';
 
+  // === Estadísticas y filtro organigrama ===
+  const statTotal = document.getElementById('personalStatTotal');
+  const statActivos = document.getElementById('personalStatActivos');
+  const statInactivos = document.getElementById('personalStatInactivos');
+  const orgFiltroEl = document.getElementById('personalOrgFiltro');
+  // Poblar organigrama selector con valores únicos de cargo
+  if(orgFiltroEl && orgFiltroEl.options.length <= 1 && db.personal.length > 0){
+    const orgs = [...new Set(db.personal.map(a=>(a.data||{}).cargo||'').filter(Boolean))].sort();
+    orgs.forEach(o=>{ const op=document.createElement('option'); op.value=o; op.textContent=o; orgFiltroEl.appendChild(op); });
+  }
+  const orgFiltro = orgFiltroEl ? orgFiltroEl.value : '';
+  if(statTotal) statTotal.textContent = db.personal.length.toLocaleString();
+  if(statActivos) statActivos.textContent = db.personal.filter(a=>(a.data||{}).estado==='ACTI').length.toLocaleString();
+  if(statInactivos) statInactivos.textContent = db.personal.filter(a=>(a.data||{}).estado!=='ACTI').length.toLocaleString();
+
   const qP = (document.getElementById('personalBdBuscar')||{}).value;
   const q = (qP||'').trim().toLowerCase();
-  const listaPersonal = q ? db.personal.filter(a=>{
+  let listaPersonal = db.personal;
+  if(orgFiltro) listaPersonal = listaPersonal.filter(a=>(a.data||{}).cargo===orgFiltro);
+  if(q) listaPersonal = listaPersonal.filter(a=>{
     const d = a.data||{};
     return String(a.nombre||'').toLowerCase().includes(q)
       || String(d.ci||'').toLowerCase().includes(q)
       || String(d.codigo||'').toLowerCase().includes(q)
       || String(d.cargo||'').toLowerCase().includes(q)
       || String(d.sucursal||'').toLowerCase().includes(q);
-  }) : db.personal;
+  });
+  // Mostrar info de filtro
+  const statFiltroEl = document.getElementById('personalStatFiltro');
+  if(statFiltroEl){
+    if(orgFiltro||q){ statFiltroEl.style.display=''; statFiltroEl.textContent='Mostrando '+listaPersonal.length.toLocaleString()+' resultado'+(listaPersonal.length!==1?'s':''); }
+    else { statFiltroEl.style.display='none'; }
+  }
+  // Paginación: renderizar de a 200 para performance con 4000+ registros
+  const PAGE = 200;
+  if(typeof window._personalPage === 'undefined') window._personalPage = 1;
+  if(orgFiltro||q) window._personalPage = 1; // reset al filtrar
+  const slice = listaPersonal.slice(0, window._personalPage * PAGE);
+  const pagEl = document.getElementById('personalPaginacion');
+  const pagInfo = document.getElementById('personalPagInfo');
+  const verMasBtn = document.getElementById('personalVerMas');
+  if(pagEl){ const hayMas = slice.length < listaPersonal.length; pagEl.style.display = hayMas ? '' : 'none'; }
+  if(pagInfo) pagInfo.textContent = 'Mostrando '+slice.length.toLocaleString()+' de '+listaPersonal.length.toLocaleString();
+  if(verMasBtn) verMasBtn.textContent = 'Ver más ('+(Math.min(PAGE, listaPersonal.length - slice.length)).toLocaleString()+')';
   const tbA = document.querySelector('#tablaPersonal tbody');
-  tbA.innerHTML = listaPersonal.map(a=>{
+  tbA.innerHTML = slice.map(a=>{
     const d = a.data||{};
     const estadoBadge = d.estado==='ACTI' ? '<span style="color:#16a34a;font-weight:600">●</span>' : '<span style="color:#dc2626;font-weight:600">●</span>';
     return '<tr><td>'+escapeHtml(d.codigo||'')+'</td><td>'+escapeHtml(a.nombre)+'</td><td>'+escapeHtml(d.ci||'')+'</td>'+
@@ -2262,6 +2324,11 @@ function renderTablasBD(){
     '<td><button class="btn small outline" onclick="editarMes('+m.id+')">Editar</button> '+
     '<button class="btn small danger" onclick="eliminarBd(\'meses\','+m.id+')">Eliminar</button></td></tr>'
   ).join('') || '<tr><td colspan="4" style="color:#888">Sin registros</td></tr>';
+}
+
+function personalMostrarMas(){
+  window._personalPage = (window._personalPage||1) + 1;
+  renderTablasBD();
 }
 
 function limpiarFormPdv(){
@@ -2852,10 +2919,15 @@ function renderPlantelAuditores(){
   const tbody = document.querySelector('#tablaPlantelAuditores tbody');
   const buscarEl = document.getElementById('plantelBuscar');
   const q = buscarEl ? buscarEl.value.trim().toLowerCase() : '';
-  const lista = q ? db.personal.filter(a=>{
+  // Solo mostrar personal cuyo cargo/organigrama sea AUDITORIA
+  const auditorias = db.personal.filter(a=>{
+    const cargo = String((a.data||{}).cargo||'').toUpperCase();
+    return cargo.includes('AUDIT');
+  });
+  const lista = q ? auditorias.filter(a=>{
     const d=a.data||{};
     return String(a.nombre||'').toLowerCase().includes(q) || String(d.ci||'').toLowerCase().includes(q) || String(d.cargo||'').toLowerCase().includes(q) || String(d.sucursal||'').toLowerCase().includes(q);
-  }) : db.personal;
+  }) : auditorias;
   tbody.innerHTML = lista.map(a=>{
     const d = a.data||{};
     const checked = actaEnCurso.auditores.some(x=>x.id===a.id) ? 'checked' : '';
