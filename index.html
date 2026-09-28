@@ -649,25 +649,35 @@
           <h4 style="margin-top:0" id="personalFormTitulo">Agregar Personal</h4>
           <input type="hidden" id="personalId">
           <div class="grid c4">
-            <div class="campo"><label>Tratamiento</label>
-              <select id="personalTratamiento"><option>Sr.</option><option>Sra.</option></select>
-            </div>
-            <div class="campo"><label>Nombre</label><input id="personalNombre" placeholder="Ej: Silvio Gómez"></div>
-            <div class="campo"><label>Documento</label><input class="cedula" id="personalDocumento" placeholder="C.I.: 1.234.567"></div>
-            <div class="campo"><label>Cargo(s)</label><input id="personalCargo" placeholder="Ej: Auditor, Supervisor de Auditoría"></div>
+            <div class="campo"><label>Legajo</label><input id="personalCodigo" placeholder="Ej: 3285"></div>
+            <div class="campo" style="grid-column:span 2"><label>Nombre completo</label><input id="personalNombre" placeholder="Ej: MONGES BARRIOS, LILIAN EMELIA"></div>
+            <div class="campo"><label>C.I.</label><input id="personalCi" placeholder="Ej: 3810714"></div>
           </div>
-          <div class="subt" style="margin-top:-6px">Una persona puede cumplir varios roles en la empresa (Auditor, Supervisor, Administrativo, Regente, Encargado, etc.) — separalos con coma si corresponde.</div>
+          <div class="grid c4" style="margin-top:8px">
+            <div class="campo" style="grid-column:span 2"><label>Sucursal / Área</label><input id="personalSucursal" placeholder="Ej: PUNTO 2 - AV FDO DE LA MORA ESQ. TARUMA"></div>
+            <div class="campo"><label>Cargo</label><input id="personalCargo" placeholder="Ej: VEND. FARMACIA"></div>
+            <div class="campo"><label>Estado</label>
+              <select id="personalEstado"><option value="ACTI">Activo</option><option value="INAC">Inactivo</option><option value="SUSP">Suspendido</option></select>
+            </div>
+          </div>
+          <div class="grid c4" style="margin-top:8px">
+            <div class="campo"><label>Fecha Ingreso</label><input type="date" id="personalFechaIngreso"></div>
+            <div class="campo"><label>Fecha Inicio Cargo</label><input type="date" id="personalFechaInicio"></div>
+            <div class="campo"><label>Edad</label><input type="number" id="personalEdad" placeholder="Ej: 35" min="18" max="99"></div>
+          </div>
           <div style="margin-top:12px">
             <button class="btn primary" onclick="guardarPersonal()">Guardar</button>
             <button class="btn outline" onclick="limpiarFormPersonal()">Cancelar</button>
           </div>
         </div>
         <div class="card">
-          <div class="campo" style="max-width:340px;margin-bottom:12px">
+          <div class="campo" style="max-width:420px;margin-bottom:12px">
             <label>Buscar</label>
-            <input id="personalBdBuscar" placeholder="Nombre, documento o cargo..." oninput="renderTablasBD()">
+            <input id="personalBdBuscar" placeholder="Nombre, C.I., legajo, cargo o sucursal..." oninput="renderTablasBD()">
           </div>
-          <table id="tablaPersonal"><thead><tr><th>ID</th><th>Trat.</th><th>Nombre</th><th>Documento</th><th>Cargo(s)</th><th></th></tr></thead><tbody></tbody></table>
+          <div style="overflow-x:auto">
+            <table id="tablaPersonal" style="min-width:900px"><thead><tr><th>Legajo</th><th>Nombre</th><th>C.I.</th><th>Sucursal / Área</th><th>Cargo</th><th>F.Ingreso</th><th>Edad</th><th>Est.</th><th></th></tr></thead><tbody></tbody></table>
+          </div>
         </div>
       </div>
 
@@ -2224,15 +2234,27 @@ function renderTablasBD(){
 
   const qP = (document.getElementById('personalBdBuscar')||{}).value;
   const q = (qP||'').trim().toLowerCase();
-  const listaPersonal = q ? db.personal.filter(a=>
-    String(a.nombre||'').toLowerCase().includes(q) || String(a.documento||'').toLowerCase().includes(q) || String(a.cargo||'').toLowerCase().includes(q)
-  ) : db.personal;
+  const listaPersonal = q ? db.personal.filter(a=>{
+    const d = a.data||{};
+    return String(a.nombre||'').toLowerCase().includes(q)
+      || String(d.ci||'').toLowerCase().includes(q)
+      || String(d.codigo||'').toLowerCase().includes(q)
+      || String(d.cargo||'').toLowerCase().includes(q)
+      || String(d.sucursal||'').toLowerCase().includes(q);
+  }) : db.personal;
   const tbA = document.querySelector('#tablaPersonal tbody');
-  tbA.innerHTML = listaPersonal.map(a=>
-    '<tr><td>'+a.id+'</td><td>'+escapeHtml(a.tratamiento||'')+'</td><td>'+escapeHtml(a.nombre)+'</td><td>'+escapeHtml(a.documento)+'</td><td>'+escapeHtml(a.cargo)+'</td>'+
-    '<td><button class="btn small outline" onclick="editarPersonal('+a.id+')">Editar</button> '+
-    '<button class="btn small danger" onclick="eliminarBd(\'personal\','+a.id+')">Eliminar</button></td></tr>'
-  ).join('') || '<tr><td colspan="6" style="color:#888">Sin registros</td></tr>';
+  tbA.innerHTML = listaPersonal.map(a=>{
+    const d = a.data||{};
+    const estadoBadge = d.estado==='ACTI' ? '<span style="color:#16a34a;font-weight:600">●</span>' : '<span style="color:#dc2626;font-weight:600">●</span>';
+    return '<tr><td>'+escapeHtml(d.codigo||'')+'</td><td>'+escapeHtml(a.nombre)+'</td><td>'+escapeHtml(d.ci||'')+'</td>'+
+      '<td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+escapeHtml(d.sucursal||'')+'">'+escapeHtml(d.sucursal||'')+'</td>'+
+      '<td>'+escapeHtml(d.cargo||'')+'</td>'+
+      '<td>'+(d.fecha_ingreso||'').substring(0,10)+'</td>'+
+      '<td style="text-align:center">'+(d.edad||'')+'</td>'+
+      '<td style="text-align:center">'+estadoBadge+'</td>'+
+      '<td><button class="btn small outline" onclick="editarPersonal('+a.id+')">Editar</button> '+
+      '<button class="btn small danger" onclick="eliminarBd(\'personal\','+a.id+')">Eliminar</button></td></tr>';
+  }).join('') || '<tr><td colspan="9" style="color:#888">Sin registros</td></tr>';
 
   const tbM = document.querySelector('#tablaMeses tbody');
   tbM.innerHTML = db.meses.slice().sort((x,y)=>(x.orden||0)-(y.orden||0)).map(m=>
@@ -2299,29 +2321,46 @@ async function guardarPdv(){
 
 function limpiarFormPersonal(){
   document.getElementById('personalFormTitulo').textContent='Agregar Personal';
-  ['personalId','personalNombre','personalDocumento','personalCargo'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('personalTratamiento').value='Sr.';
+  ['personalId','personalCodigo','personalNombre','personalCi','personalSucursal','personalCargo','personalFechaIngreso','personalFechaInicio','personalEdad']
+    .forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  const est = document.getElementById('personalEstado'); if(est) est.value='ACTI';
 }
 function editarPersonal(id){
   const a = db.personal.find(x=>x.id===id); if(!a) return;
+  const d = a.data||{};
   document.getElementById('personalFormTitulo').textContent='Editar Personal #'+id;
   document.getElementById('personalId').value=a.id;
-  document.getElementById('personalTratamiento').value=a.tratamiento||'Sr.';
+  document.getElementById('personalCodigo').value=d.codigo||'';
   document.getElementById('personalNombre').value=a.nombre||'';
-  document.getElementById('personalDocumento').value=a.documento||'';
-  document.getElementById('personalCargo').value=a.cargo||'';
-  attachCedulaFormatting();
+  document.getElementById('personalCi').value=d.ci||'';
+  document.getElementById('personalSucursal').value=d.sucursal||'';
+  document.getElementById('personalCargo').value=d.cargo||'';
+  document.getElementById('personalEstado').value=d.estado||'ACTI';
+  document.getElementById('personalFechaIngreso').value=(d.fecha_ingreso||'').substring(0,10);
+  document.getElementById('personalFechaInicio').value=(d.fecha_inicio||'').substring(0,10);
+  document.getElementById('personalEdad').value=d.edad||'';
   window.scrollTo(0,0);
 }
 async function guardarPersonal(){
+  const nombre = document.getElementById('personalNombre').value.trim();
+  if(!nombre){ toast('Falta el nombre'); return; }
+  const dataFields = {
+    codigo: document.getElementById('personalCodigo').value.trim(),
+    ci: document.getElementById('personalCi').value.trim(),
+    sucursal: document.getElementById('personalSucursal').value.trim(),
+    cargo: document.getElementById('personalCargo').value.trim(),
+    estado: document.getElementById('personalEstado').value,
+    fecha_ingreso: document.getElementById('personalFechaIngreso').value||null,
+    fecha_inicio: document.getElementById('personalFechaInicio').value||null,
+    edad: Number(document.getElementById('personalEdad').value)||null
+  };
+  // limpiar nulos para no mandar campos vacíos
+  Object.keys(dataFields).forEach(k=>{ if(dataFields[k]===null||dataFields[k]==='') delete dataFields[k]; });
   const item = {
     id: document.getElementById('personalId').value || null,
-    tratamiento: document.getElementById('personalTratamiento').value,
-    nombre: document.getElementById('personalNombre').value.trim(),
-    documento: document.getElementById('personalDocumento').value.trim(),
-    cargo: document.getElementById('personalCargo').value.trim()
+    nombre,
+    data: dataFields
   };
-  if(!item.nombre){ toast('Falta el nombre'); return; }
   const r = await apiPost('bdSave', { catalogo:'personal', item });
   if(r && r.ok){ toast('Guardado'); limpiarFormPersonal(); await cargarBD(); renderTablasBD(); }
   else toast('Error: '+(r&&r.error));
@@ -2813,16 +2852,18 @@ function renderPlantelAuditores(){
   const tbody = document.querySelector('#tablaPlantelAuditores tbody');
   const buscarEl = document.getElementById('plantelBuscar');
   const q = buscarEl ? buscarEl.value.trim().toLowerCase() : '';
-  const lista = q ? db.personal.filter(a=>
-    String(a.nombre||'').toLowerCase().includes(q) || String(a.documento||'').toLowerCase().includes(q) || String(a.cargo||'').toLowerCase().includes(q)
-  ) : db.personal;
+  const lista = q ? db.personal.filter(a=>{
+    const d=a.data||{};
+    return String(a.nombre||'').toLowerCase().includes(q) || String(d.ci||'').toLowerCase().includes(q) || String(d.cargo||'').toLowerCase().includes(q) || String(d.sucursal||'').toLowerCase().includes(q);
+  }) : db.personal;
   tbody.innerHTML = lista.map(a=>{
+    const d = a.data||{};
     const checked = actaEnCurso.auditores.some(x=>x.id===a.id) ? 'checked' : '';
     const esSupervisor = actaEnCurso.supervisorAuditoria && actaEnCurso.supervisorAuditoria.id===a.id;
     return '<tr><td style="text-align:center">'+
       '<span title="Marcar como Supervisor a cargo" style="cursor:pointer;font-size:16px;color:'+(esSupervisor?'#c99a00':'#ccc')+'" onclick="toggleSupervisorAuditor('+a.id+')">★</span></td>'+
       '<td><input type="checkbox" '+checked+' onchange="toggleAuditorSeleccionado('+a.id+',this.checked)"></td>'+
-      '<td>'+escapeHtml(a.tratamiento||'')+' '+escapeHtml(a.nombre)+'</td><td>'+escapeHtml(a.documento)+'</td><td>'+escapeHtml(a.cargo)+'</td></tr>';
+      '<td>'+escapeHtml(a.nombre)+'</td><td>'+escapeHtml(d.ci||d.documento||'')+'</td><td>'+escapeHtml(d.cargo||'')+'</td></tr>';
   }).join('') || '<tr><td colspan="5" style="color:#888">No hay personal que coincida</td></tr>';
   renderListaAuditoresSeleccionados();
 }
@@ -2851,7 +2892,7 @@ function renderListaAuditoresSeleccionados(){
   el.innerHTML = actaEnCurso.auditores.length
     ? actaEnCurso.auditores.map(a=>{
         const esSup = sup && sup.id===a.id;
-        return '<div>'+(esSup?'★ ':'• ')+escapeHtml(a.tratamiento||'')+' '+escapeHtml(a.nombre)+' — '+escapeHtml(a.cargo)+(esSup?' <b>(Supervisor a cargo)</b>':'')+'</div>';
+        return '<div>'+(esSup?'★ ':'• ')+escapeHtml(a.nombre)+' — '+escapeHtml((a.data||{}).cargo||a.cargo||'')+(esSup?' <b>(Supervisor a cargo)</b>':'')+'</div>';
       }).join('')
     : 'Ninguno seleccionado todavía.';
 }
@@ -2863,8 +2904,8 @@ function articulo(tratamiento){ return /^Sr\.?$/i.test(String(tratamiento||'').t
 
 function nombresConcatenados(lista){
   return (lista||[]).filter(x=>x && x.nombre).map(x=>{
-    const trat = x.tratamiento || 'Sr.';
-    return articulo(trat)+' '+trat+' '+x.nombre+(x.cargo?(', '+x.cargo):'');
+    const cargo = (x.data||{}).cargo || x.cargo || '';
+    return x.nombre+(cargo?(', '+cargo):'');
   }).join(', ');
 }
 
@@ -4684,9 +4725,9 @@ function arqRenderSelectoresPaso1(){
     db.pdv.map(p=>'<option value="'+p.id+'">'+escapeHtml(p.punto)+' — '+escapeHtml(p.ciudad||'')+'</option>').join('');
   if(arqEstado.pdvId) selPdv.value = arqEstado.pdvId;
 
-  const opcionesPersonal = db.personal.map(p=>
-    '<option value="'+p.id+'">'+escapeHtml(((p.tratamiento||'')+' '+p.nombre).trim())+' — '+escapeHtml(p.cargo||'')+'</option>'
-  ).join('');
+  const opcionesPersonal = db.personal.map(p=>{
+    const d=p.data||{}; return '<option value="'+p.id+'">'+escapeHtml(p.nombre)+' — '+escapeHtml(d.cargo||p.cargo||'')+'</option>';
+  }).join('');
   const selAud = document.getElementById('arqSelAuditor');
   selAud.innerHTML = '<option value="">— Seleccionar —</option>' + opcionesPersonal;
   if(arqEstado.auditorPersonalId) selAud.value = arqEstado.auditorPersonalId;
@@ -4715,9 +4756,10 @@ function arqOnCambiaAuditor(){
   const p = db.personal.find(x=>x.id===id);
   arqEstado.auditorPersonalId = id;
   if(p){
-    arqEstado.nomAuditor = ((p.tratamiento||'')+' '+p.nombre).trim();
-    document.getElementById('arqCiAuditor').value = p.documento || '';
-    document.getElementById('arqCargoAuditor').value = p.cargo || '';
+    const d=p.data||{};
+    arqEstado.nomAuditor = p.nombre;
+    document.getElementById('arqCiAuditor').value = d.ci || d.documento || '';
+    document.getElementById('arqCargoAuditor').value = d.cargo || p.cargo || '';
     attachCedulaFormatting();
   }
 }
@@ -4726,9 +4768,10 @@ function arqOnCambiaEvaluado(){
   const p = db.personal.find(x=>x.id===id);
   arqEstado.evaluadoPersonalId = id;
   if(p){
-    arqEstado.nombreEvaluado = ((p.tratamiento||'')+' '+p.nombre).trim();
-    document.getElementById('arqCiEvaluado').value = p.documento || '';
-    document.getElementById('arqCargoEvaluado').value = p.cargo || (arqEstado.modo==='cajero' ? 'Cajero' : '');
+    const d=p.data||{};
+    arqEstado.nombreEvaluado = p.nombre;
+    document.getElementById('arqCiEvaluado').value = d.ci || d.documento || '';
+    document.getElementById('arqCargoEvaluado').value = d.cargo || p.cargo || (arqEstado.modo==='cajero' ? 'Cajero' : '');
     attachCedulaFormatting();
   }
 }
@@ -4758,13 +4801,16 @@ async function arqAgregarPersonalRapido(targetSelectId){
   const cerrar = ()=>pfModalCerrar();
   document.getElementById('arqNuevoPersonalCancel').onclick = cerrar;
   document.getElementById('arqNuevoPersonalOk').onclick = async ()=>{
+    const nombre = document.getElementById('arqNuevoPersonalNombre').value.trim();
+    if(!nombre){ toast('Falta el nombre'); return; }
     const item = {
-      tratamiento: document.getElementById('arqNuevoPersonalTrat').value,
-      nombre: document.getElementById('arqNuevoPersonalNombre').value.trim(),
-      documento: document.getElementById('arqNuevoPersonalDoc').value.trim(),
-      cargo: document.getElementById('arqNuevoPersonalCargo').value.trim()
+      nombre,
+      data: {
+        ci: document.getElementById('arqNuevoPersonalDoc').value.trim(),
+        cargo: document.getElementById('arqNuevoPersonalCargo').value.trim(),
+        estado: 'ACTI'
+      }
     };
-    if(!item.nombre){ toast('Falta el nombre'); return; }
     const r = await apiPost('bdSave', { catalogo:'personal', item });
     if(!(r && r.ok)){ toast('Error al guardar: '+((r&&r.error)||'desconocido')); return; }
     cerrar();
@@ -6009,7 +6055,7 @@ async function audEmpezarDeNuevo(){
 function audLlenarSelectPersonal(id, currentId){
   const sel = document.getElementById(id);
   sel.innerHTML = '<option value="">— Seleccionar —</option>' +
-    db.personal.map(p=>'<option value="'+p.id+'">'+escapeHtml(((p.tratamiento||'')+' '+p.nombre).trim())+' — '+escapeHtml(p.cargo||'')+'</option>').join('');
+    db.personal.map(p=>'<option value="'+p.id+'">'+escapeHtml(p.nombre)+' — '+escapeHtml((p.data||{}).cargo||p.cargo||'')+'</option>').join('');
   if(currentId) sel.value = currentId;
 }
 function audRenderPaso1(){
@@ -6051,7 +6097,7 @@ function audOnCambiaPersonal(rol){
   const id = Number(document.getElementById(map[2]).value) || '';
   const p = db.personal.find(x=>x.id===id);
   audState.meta[map[1]] = id;
-  audState.meta[map[0]] = p ? ((p.tratamiento||'')+' '+p.nombre).trim() : '';
+  audState.meta[map[0]] = p ? p.nombre : '';
 }
 async function audIniciarAuditoria(){
   const fecha = document.getElementById('audFecha').value;
@@ -7505,8 +7551,7 @@ function inicializarFondosDeMarca(){
       '1-5':'👷 Día del Trabajador','15-5':'🇵🇾 Independencia del Paraguay',
       '12-6':'⚔️ Paz del Chaco','15-8':'🌟 Fundación de Asunción',
       '29-9':'⚔️ Batalla de Boquerón','25-11':'🏅 Virgen de Caacupé (víspera)',
-      '8-12':'🙏 Virgen de Caacupé','25-12':'🎄 Navidad','31-12':'🎇 Fin de Año',
-      '28-9':'📋 Día de la Auditoría Interna' // hoy mismo (ajustá si querés)
+      '8-12':'🙏 Virgen de Caacupé','25-12':'🎄 Navidad','31-12':'🎇 Fin de Año'
     };
     const efKey = pyDay+'-'+pyMon;
     const efStr = efem[efKey] || '';
