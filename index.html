@@ -686,7 +686,7 @@
               <span style="font-size:0.78rem;margin-top:4px;opacity:.88">Inactivos / Susp.</span>
             </div>
             <div style="flex:1;min-width:200px;max-width:320px">
-              <label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:4px;color:var(--text-secondary,#64748b)">Filtrar por Organigrama</label>
+              <label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:4px;color:var(--text-secondary,#64748b)">Filtrar por Organigrama (Cargo)</label>
               <select id="personalOrgFiltro" onchange="renderTablasBD()" style="width:100%;padding:7px 10px;border:1px solid var(--border,#cbd5e1);border-radius:6px;font-size:0.9rem">
                 <option value="">— Todos —</option>
               </select>
@@ -859,6 +859,22 @@
     <div class="pantalla" id="pantallaPlantel">
       <h2 class="titulo">Plantel Auditores</h2>
       <div class="subt">Seleccioná las personas (del catálogo de Personal) que participan de este inventario. Marcá con ★ al Supervisor de Auditoría a cargo.</div>
+      <!-- Tarjeta estadísticas Plantel -->
+      <div class="card" style="margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;align-items:center;background:var(--color-primary,#1d4ed8);color:#fff;border-radius:10px;padding:14px 28px;min-width:130px">
+            <span style="font-size:2rem;font-weight:700;line-height:1" id="plantelStatTotal">—</span>
+            <span style="font-size:0.78rem;margin-top:4px;opacity:.88">Auditores en BD</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;background:#16a34a;color:#fff;border-radius:10px;padding:14px 28px;min-width:130px">
+            <span style="font-size:2rem;font-weight:700;line-height:1" id="plantelStatSelec">0</span>
+            <span style="font-size:0.78rem;margin-top:4px;opacity:.88">Seleccionados</span>
+          </div>
+          <div style="font-size:0.82rem;color:var(--text-secondary,#64748b);font-style:italic;max-width:280px">
+            Muestra únicamente personal con organigrama de Auditoría (ESTR_DESCRIPCION = AUDITORIA)
+          </div>
+        </div>
+      </div>
       <div class="card">
         <div class="campo" style="max-width:340px;margin-bottom:12px">
           <label>Buscar</label>
@@ -2915,15 +2931,24 @@ async function calcularDescuentosAhora(){
  *  PLANTEL AUDITORES (Acta) — selecciona desde el catálogo compartido
  *  de Personal.
  * ============================================================ */
+function esAuditor_(a){
+  // Incluye todos los cargos del organigrama de Auditoría:
+  // AUDITORIA, ANALISTA AUDITORIA, AUX. AUDITORIA, JEFE AUDITORIA,
+  // AUD. AUX. INVENT., AUX. AUD. COM, SUP. AUD. *, SUPERV. AUD. *
+  const cargo = String((a.data||{}).cargo||'').toUpperCase();
+  return cargo.includes('AUDIT') || cargo.startsWith('AUD.') || cargo.includes(' AUD.');
+}
 function renderPlantelAuditores(){
   const tbody = document.querySelector('#tablaPlantelAuditores tbody');
   const buscarEl = document.getElementById('plantelBuscar');
   const q = buscarEl ? buscarEl.value.trim().toLowerCase() : '';
-  // Solo mostrar personal cuyo cargo/organigrama sea AUDITORIA
-  const auditorias = db.personal.filter(a=>{
-    const cargo = String((a.data||{}).cargo||'').toUpperCase();
-    return cargo.includes('AUDIT');
-  });
+  // Solo personal cuyo organigrama (campo cargo) corresponde a Auditoría
+  const auditorias = db.personal.filter(esAuditor_);
+  // Actualizar stat total de auditores en BD
+  const statTot = document.getElementById('plantelStatTotal');
+  if(statTot) statTot.textContent = auditorias.length.toLocaleString();
+  const statSel = document.getElementById('plantelStatSelec');
+  if(statSel) statSel.textContent = (actaEnCurso.auditores||[]).length.toLocaleString();
   const lista = q ? auditorias.filter(a=>{
     const d=a.data||{};
     return String(a.nombre||'').toLowerCase().includes(q) || String(d.ci||'').toLowerCase().includes(q) || String(d.cargo||'').toLowerCase().includes(q) || String(d.sucursal||'').toLowerCase().includes(q);
@@ -2967,6 +2992,9 @@ function renderListaAuditoresSeleccionados(){
         return '<div>'+(esSup?'★ ':'• ')+escapeHtml(a.nombre)+' — '+escapeHtml((a.data||{}).cargo||a.cargo||'')+(esSup?' <b>(Supervisor a cargo)</b>':'')+'</div>';
       }).join('')
     : 'Ninguno seleccionado todavía.';
+  // Actualizar chip de seleccionados en la tarjeta de stats
+  const statSel = document.getElementById('plantelStatSelec');
+  if(statSel) statSel.textContent = actaEnCurso.auditores.length.toLocaleString();
 }
 
 /* ============================================================
