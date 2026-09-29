@@ -871,7 +871,7 @@
             <span style="font-size:0.78rem;margin-top:4px;opacity:.88">Seleccionados</span>
           </div>
           <div style="font-size:0.82rem;color:var(--text-secondary,#64748b);font-style:italic;max-width:280px">
-            Muestra únicamente personal con organigrama de Auditoría (ESTR_DESCRIPCION = AUDITORIA)
+            Muestra únicamente personal cuya sucursal es <b>AUDITORIA</b> (ESTR_DESCRIPCION = AUDITORIA)
           </div>
         </div>
       </div>
@@ -2932,11 +2932,8 @@ async function calcularDescuentosAhora(){
  *  de Personal.
  * ============================================================ */
 function esAuditor_(a){
-  // Incluye todos los cargos del organigrama de Auditoría:
-  // AUDITORIA, ANALISTA AUDITORIA, AUX. AUDITORIA, JEFE AUDITORIA,
-  // AUD. AUX. INVENT., AUX. AUD. COM, SUP. AUD. *, SUPERV. AUD. *
-  const cargo = String((a.data||{}).cargo||'').toUpperCase();
-  return cargo.includes('AUDIT') || cargo.startsWith('AUD.') || cargo.includes(' AUD.');
+  // El criterio es ESTR_DESCRIPCION = 'AUDITORIA', que está guardado en data.sucursal
+  return String((a.data||{}).sucursal||'').toUpperCase() === 'AUDITORIA';
 }
 function renderPlantelAuditores(){
   const tbody = document.querySelector('#tablaPlantelAuditores tbody');
