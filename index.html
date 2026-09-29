@@ -1726,6 +1726,22 @@ let actaEnCurso = actaVacia();
  *  UTILIDADES COMPARTIDAS
  * ============================================================ */
 function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function primerNombreApellido(nombre){
+  // Convierte a Title Case respetando tildes y caracteres especiales
+  const toTitle = s => s.replace(/\S+/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+  const n = String(nombre||'').trim();
+  if(!n) return '';
+  if(n.includes(',')){
+    // Formato "APELLIDO, NOMBRE SEGUNDO" → "Nombre Apellido"
+    const parts = n.split(',');
+    const ape = (parts[0]||'').trim().split(/\s+/)[0] || '';
+    const nom = (parts[1]||'').trim().split(/\s+/)[0] || '';
+    return toTitle(nom + (ape ? ' '+ape : ''));
+  }
+  // Formato "NOMBRE SEGUNDO APELLIDO" → primeras dos palabras
+  const words = n.trim().split(/\s+/);
+  return toTitle(words.slice(0,2).join(' '));
+}
 function fmtGs(n){ n = Math.round(Number(n)||0); return 'Gs. ' + n.toLocaleString('es-PY'); }
 /* Puntajes (checklists de Auditoría) NO son moneda — nunca deben llevar el
  * prefijo "Gs.". fmtPts formatea números planos (con un decimal si hace
@@ -2192,6 +2208,7 @@ async function renderBitacora(){
  *  NAVEGACIÓN
  * ============================================================ */
 function mostrarPantalla(id){
+  window.scrollTo({top:0,behavior:'smooth'});
   document.querySelectorAll('.pantalla').forEach(p=>p.classList.remove('activa'));
   document.getElementById(id).classList.add('activa');
   document.querySelectorAll('.nav-links a').forEach(a=>a.classList.remove('active'));
@@ -2878,13 +2895,62 @@ function redibujarFilasDescuento(){
       <td><input type="date" value="${f.fechaEgreso||''}" onchange="actaEnCurso.descuentos.empleados[${i}].fechaEgreso=this.value"></td>
       <td>${f.dias!=null?f.dias:'—'}</td>
       <td>${f.monto!=null?fmtGs(f.monto):'—'}</td>
-      <td>${f.esEncargado?'':'<button class="btn small danger" onclick="quitarFilaDescuento('+i+')">Quitar</button>'}</td>
+      <td><button class="btn outline small" onclick="descuentoBuscarPersonal(${i})" title="Buscar en BD">🔍</button>${f.esEncargado?'':'<button class="btn small danger" onclick="quitarFilaDescuento('+i+')">Quitar</button>'}</td>
     </tr>`).join('');
   attachCedulaFormatting();
 }
 
 function agregarFilaDescuento(){
   actaEnCurso.descuentos.empleados.push({ tratamiento:'Sra.', nombre:'', cargo:'', documento:'', estado:'FIJO1', fechaIngreso:'', fechaEgreso:'', esEncargado:false });
+  redibujarFilasDescuento();
+  renderPlanillaDescuento();
+}
+function descuentoBuscarPersonal(idx){
+  pfModalMostrar(
+    '<h4 style="margin-top:0;color:var(--azul)">Buscar Personal en BD</h4>'+
+    '<div class="campo" style="margin-bottom:10px"><label>Nombre o C.I.</label>'+
+    '<input id="descBdQ" placeholder="Escribí nombre o número de C.I." oninput="descBdFiltrar()" autocomplete="off"></div>'+
+    '<div id="descBdResultados" style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:6px"></div>'+
+    '<div style="text-align:right;margin-top:10px"><button class="btn outline" onclick="pfModalCerrar()">Cancelar</button></div>'
+  );
+  window._descBdIdx = idx;
+  setTimeout(()=>{ document.getElementById('descBdQ').focus(); descBdFiltrar(); }, 50);
+}
+function descBdFiltrar(){
+  const q = (document.getElementById('descBdQ').value||'').toLowerCase().trim();
+  const res = document.getElementById('descBdResultados');
+  if(!res) return;
+  const lista = q
+    ? db.personal.filter(p=>{
+        const d=p.data||{};
+        return p.nombre.toLowerCase().includes(q) || String(d.ci||d.documento||'').includes(q);
+      })
+    : db.personal.slice(0,40);
+  if(!lista.length){ res.innerHTML='<div style="padding:10px;color:var(--muted)">Sin resultados</div>'; return; }
+  res.innerHTML = lista.slice(0,60).map(p=>{
+    const d=p.data||{};
+    const ci=d.ci||d.documento||'';
+    const cargo=d.cargo||'';
+    return '<div style="padding:7px 10px;cursor:pointer;border-bottom:1px solid var(--border)" '+
+      'onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'" '+
+      'onclick="descBdSeleccionar('+p.id+')">'
+      +'<b>'+escapeHtml(primerNombreApellido(p.nombre))+'</b>'
+      +(ci?' <span style="color:var(--muted);font-size:12px">C.I. '+escapeHtml(ci)+'</span>':'')
+      +(cargo?' — '+escapeHtml(cargo):'')
+      +'</div>';
+  }).join('');
+}
+function descBdSeleccionar(id){
+  const p = db.personal.find(x=>x.id===id); if(!p) return;
+  const d = p.data||{};
+  const i = window._descBdIdx;
+  const arr = actaEnCurso.descuentos.empleados;
+  if(i==null || i>=arr.length) return;
+  arr[i].nombre = primerNombreApellido(p.nombre).toUpperCase();
+  arr[i].documento = d.ci || d.documento || arr[i].documento || '';
+  arr[i].cargo = (d.cargo||arr[i].cargo||'').toUpperCase();
+  arr[i].tratamiento = p.tratamiento || d.tratamiento || arr[i].tratamiento || 'Sr.';
+  pfModalCerrar();
   redibujarFilasDescuento();
   renderPlanillaDescuento();
 }
@@ -3001,8 +3067,8 @@ function articulo(tratamiento){ return /^Sr\.?$/i.test(String(tratamiento||'').t
 
 function nombresConcatenados(lista){
   return (lista||[]).filter(x=>x && x.nombre).map(x=>{
-    const cargo = (x.data||{}).cargo || x.cargo || '';
-    return x.nombre+(cargo?(', '+cargo):'');
+    const cargo = ((x.data||{}).cargo || x.cargo || '').toUpperCase();
+    return primerNombreApellido(x.nombre)+(cargo?(', '+cargo):'');
   }).join(', ');
 }
 
@@ -3353,7 +3419,7 @@ function ordenFirmantes(){
 function firmasGridHtml(){
   const firmantes = ordenFirmantes().map(f=>({
     nombre: (f.tratamiento?f.tratamiento+' ':'')+f.nombre,
-    sub: f.documento || ''
+    sub: (f.data||{}).ci || (f.data||{}).documento || f.documento || ''
   }));
   if(!firmantes.length) return '';
   return '<div class="firmas-grid">' + firmantes.map(f=>
@@ -4825,8 +4891,11 @@ function arqRenderSelectoresPaso1(){
   const opcionesPersonal = db.personal.map(p=>{
     const d=p.data||{}; return '<option value="'+p.id+'">'+escapeHtml(p.nombre)+' — '+escapeHtml(d.cargo||p.cargo||'')+'</option>';
   }).join('');
+  const opcionesAuditores = db.personal.filter(esAuditor_).map(p=>{
+    const d=p.data||{}; return '<option value="'+p.id+'">'+escapeHtml(p.nombre)+' — '+escapeHtml(d.cargo||p.cargo||'')+'</option>';
+  }).join('');
   const selAud = document.getElementById('arqSelAuditor');
-  selAud.innerHTML = '<option value="">— Seleccionar —</option>' + opcionesPersonal;
+  selAud.innerHTML = '<option value="">— Seleccionar —</option>' + opcionesAuditores;
   if(arqEstado.auditorPersonalId) selAud.value = arqEstado.auditorPersonalId;
   const selEva = document.getElementById('arqSelEvaluado');
   selEva.innerHTML = '<option value="">— Seleccionar —</option>' + opcionesPersonal;
@@ -4854,7 +4923,7 @@ function arqOnCambiaAuditor(){
   arqEstado.auditorPersonalId = id;
   if(p){
     const d=p.data||{};
-    arqEstado.nomAuditor = p.nombre;
+    arqEstado.nomAuditor = primerNombreApellido(p.nombre);
     document.getElementById('arqCiAuditor').value = d.ci || d.documento || '';
     document.getElementById('arqCargoAuditor').value = d.cargo || p.cargo || '';
     attachCedulaFormatting();
@@ -4866,7 +4935,7 @@ function arqOnCambiaEvaluado(){
   arqEstado.evaluadoPersonalId = id;
   if(p){
     const d=p.data||{};
-    arqEstado.nombreEvaluado = p.nombre;
+    arqEstado.nombreEvaluado = primerNombreApellido(p.nombre);
     document.getElementById('arqCiEvaluado').value = d.ci || d.documento || '';
     document.getElementById('arqCargoEvaluado').value = d.cargo || p.cargo || (arqEstado.modo==='cajero' ? 'Cajero' : '');
     attachCedulaFormatting();
@@ -6149,10 +6218,11 @@ async function audEmpezarDeNuevo(){
 }
 
 /* ---------------- Paso 1: datos generales + catálogos ---------------- */
-function audLlenarSelectPersonal(id, currentId){
+function audLlenarSelectPersonal(id, currentId, soloAuditores){
   const sel = document.getElementById(id);
+  const lista = soloAuditores ? db.personal.filter(esAuditor_) : db.personal;
   sel.innerHTML = '<option value="">— Seleccionar —</option>' +
-    db.personal.map(p=>'<option value="'+p.id+'">'+escapeHtml(p.nombre)+' — '+escapeHtml((p.data||{}).cargo||p.cargo||'')+'</option>').join('');
+    lista.map(p=>'<option value="'+p.id+'">'+escapeHtml(p.nombre)+' — '+escapeHtml((p.data||{}).cargo||p.cargo||'')+'</option>').join('');
   if(currentId) sel.value = currentId;
 }
 function audRenderPaso1(){
@@ -6161,7 +6231,7 @@ function audRenderPaso1(){
     db.pdv.map(p=>'<option value="'+p.id+'">'+escapeHtml(p.punto)+' — '+escapeHtml(p.ciudad||'')+'</option>').join('');
   if(audState.meta.pdvId) selPdv.value = audState.meta.pdvId;
 
-  audLlenarSelectPersonal('audSelAuditor', audState.meta.auditorPersonalId);
+  audLlenarSelectPersonal('audSelAuditor', audState.meta.auditorPersonalId, true);
   audLlenarSelectPersonal('audSelSupervisor', audState.meta.supervisorPersonalId);
   audLlenarSelectPersonal('audSelRegente', audState.meta.regentePersonalId);
   audLlenarSelectPersonal('audSelAdministrativo', audState.meta.administrativoPersonalId);
@@ -6194,7 +6264,7 @@ function audOnCambiaPersonal(rol){
   const id = Number(document.getElementById(map[2]).value) || '';
   const p = db.personal.find(x=>x.id===id);
   audState.meta[map[1]] = id;
-  audState.meta[map[0]] = p ? p.nombre : '';
+  audState.meta[map[0]] = p ? primerNombreApellido(p.nombre) : '';
 }
 async function audIniciarAuditoria(){
   const fecha = document.getElementById('audFecha').value;
