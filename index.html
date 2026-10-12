@@ -640,6 +640,10 @@
           </div>
         </div>
         <div class="card">
+          <div class="campo" style="max-width:380px;margin-bottom:12px">
+            <label>Buscar</label>
+            <input id="pdvBuscar" placeholder="Punto, estructura, ciudad, encargado..." oninput="renderTablasBD()">
+          </div>
           <table id="tablaPdv"><thead><tr><th>ID</th><th>Punto</th><th>Estructura</th><th>Ciudad</th><th>Encargado</th><th>Administrativo</th><th></th></tr></thead><tbody></tbody></table>
         </div>
       </div>
@@ -723,6 +727,10 @@
           </div>
         </div>
         <div class="card">
+          <div class="campo" style="max-width:380px;margin-bottom:12px">
+            <label>Buscar</label>
+            <input id="mesesBuscar" placeholder="Nombre del mes..." oninput="renderTablasBD()">
+          </div>
           <table id="tablaMeses"><thead><tr><th>ID</th><th>Nombre</th><th>Orden</th><th></th></tr></thead><tbody></tbody></table>
         </div>
       </div>
@@ -970,7 +978,7 @@
                 <button type="button" class="btn outline small" title="Agregar una persona nueva al catálogo de Personal" onclick="arqAgregarPersonalRapido('arqSelAuditor')">+ Nuevo</button>
               </div>
             </div>
-            <div class="campo"><label>C.I. del Auditor</label><input id="arqCiAuditor" class="cedula"></div>
+            <div class="campo"><label>C.I. del Auditor</label><input id="arqCiAuditor" class="cedula" oninput="arqOnEscribeCi('auditor')" placeholder="Si ya está en Personal, se autocompleta"></div>
             <div class="campo"><label>Cargo del Auditor</label><input id="arqCargoAuditor"></div>
           </div>
 
@@ -983,7 +991,7 @@
                 <button type="button" class="btn outline small" title="Agregar una persona nueva al catálogo de Personal (Administrativo, Encargado/a, etc.)" onclick="arqAgregarPersonalRapido('arqSelEvaluado')">+ Nuevo</button>
               </div>
             </div>
-            <div class="campo"><label>C.I. Evaluado</label><input id="arqCiEvaluado" class="cedula"></div>
+            <div class="campo"><label>C.I. Evaluado</label><input id="arqCiEvaluado" class="cedula" oninput="arqOnEscribeCi('evaluado')" placeholder="Si ya está en Personal, se autocompleta"></div>
             <div class="campo"><label>Cargo Evaluado</label><input id="arqCargoEvaluado"></div>
           </div>
 
@@ -1512,6 +1520,10 @@
         <div style="margin-top:12px"><button class="btn primary" onclick="crearUsuario()">Crear</button></div>
       </div>
       <div class="card">
+        <div class="campo" style="max-width:380px;margin-bottom:12px">
+          <label>Buscar</label>
+          <input id="usuariosBuscar" placeholder="Usuario o rol..." oninput="renderUsersTableFiltrado()">
+        </div>
         <table id="tablaUsuarios"><thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Creado</th><th></th></tr></thead><tbody></tbody></table>
       </div>
       <div class="card">
@@ -1529,7 +1541,13 @@
       <h2 class="titulo">Bitácora</h2>
       <div class="subt" id="bitacoraSubt">Registro de acciones del sistema.</div>
       <div class="card">
-        <button class="btn outline" onclick="renderBitacora()">Actualizar</button>
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:4px">
+          <button class="btn outline" onclick="renderBitacora()">Actualizar</button>
+          <div class="campo" style="max-width:380px;flex:1;min-width:220px">
+            <label>Buscar</label>
+            <input id="bitacoraBuscar" placeholder="Usuario, rol, módulo, acción o detalle..." oninput="renderBitacoraFiltrado()">
+          </div>
+        </div>
         <table id="tablaBitacora" style="margin-top:12px"><thead><tr><th>Fecha</th><th>Usuario</th><th>Rol</th><th>Módulo</th><th>Acción</th><th>Detalle</th></tr></thead><tbody></tbody></table>
       </div>
     </div>
@@ -2061,7 +2079,7 @@ async function apiPost(action, extra){
     });
   }catch(networkErr){
     sentryCaptureClient_(networkErr, {tipo:'apiPost-network', action});
-    return { ok:false, error:'No se pudo conectar con el servidor. Revisá tu conexión a internet, o que la URL de Supabase configurada arriba en el archivo sea correcta.' };
+    return { ok:false, redDesconectada:true, error:'No se pudo conectar con el servidor. Revisá tu conexión a internet, o que la URL de Supabase configurada arriba en el archivo sea correcta.' };
   }
   try{
     return await res.json();
@@ -2121,6 +2139,7 @@ async function enterApp(){
   // otra para que el login tarde el tiempo del más lento de los dos, no la
   // suma de ambos.
   await Promise.all([cargarTiposEstado(), cargarBD()]);
+  pfRestaurarBorradores_();
   mostrarPantalla('pantallaInicio');
 }
 
@@ -2137,8 +2156,42 @@ async function boot(){
   const s = loadSessionFromStorage();
   if(!s){ return; }
   const res = await apiPost('validarSesion', { token: s.token });
-  if(res && res.ok){ session = s; await enterApp(); }
-  else { clearSessionStorage(); }
+  if(res && res.ok){
+    session = s; await enterApp();
+  } else if(res && res.redDesconectada){
+    // Sin conexión con el servidor al refrescar: NO cerramos la sesión.
+    // Entramos de forma optimista con la sesión guardada localmente y
+    // reintentamos validar en segundo plano; solo se fuerza el logout si
+    // el servidor responde explícitamente que la sesión no es válida.
+    session = s;
+    await enterApp();
+    toast('Sin conexión con el servidor. Mostrando la app con los datos guardados — reintentando conectar...');
+    pfReintentarValidacionSesion_();
+  } else {
+    clearSessionStorage();
+  }
+}
+
+let _pfReintentoSesionTimer = null;
+function pfReintentarValidacionSesion_(){
+  if(_pfReintentoSesionTimer) return;
+  let intentos = 0;
+  _pfReintentoSesionTimer = setInterval(async ()=>{
+    intentos++;
+    const s = loadSessionFromStorage();
+    if(!s){ clearInterval(_pfReintentoSesionTimer); _pfReintentoSesionTimer = null; return; }
+    const res = await apiPost('validarSesion', { token: s.token });
+    if(res && res.ok){
+      clearInterval(_pfReintentoSesionTimer); _pfReintentoSesionTimer = null;
+      toast('Conexión restablecida.');
+    } else if(res && !res.redDesconectada){
+      // El servidor respondió explícitamente (no fue un error de red): la sesión ya no es válida.
+      clearInterval(_pfReintentoSesionTimer); _pfReintentoSesionTimer = null;
+      requireLoginAgain('Tu sesión expiró o no es válida. Volvé a iniciar sesión.');
+    } else if(intentos >= 20){
+      clearInterval(_pfReintentoSesionTimer); _pfReintentoSesionTimer = null;
+    }
+  }, 15000);
 }
 
 /* ============================================================
@@ -2153,11 +2206,21 @@ async function crearUsuario(){
   if(r && r.ok){ toast('Usuario creado'); document.getElementById('uNuevoUsuario').value=''; document.getElementById('uNuevoPassword').value=''; renderUsersTable(); }
   else toast('Error: '+(r&&r.error));
 }
+let _usuariosCache = [];
 async function renderUsersTable(){
   const r = await apiPost('listUsers', {});
   const tbody = document.querySelector('#tablaUsuarios tbody');
   if(!(r && r.ok)){ tbody.innerHTML = '<tr><td colspan="5">'+escapeHtml((r&&r.error)||'Error')+'</td></tr>'; return; }
-  tbody.innerHTML = r.usuarios.map(u=>`
+  _usuariosCache = r.usuarios || [];
+  renderUsersTableFiltrado();
+}
+function renderUsersTableFiltrado(){
+  const tbody = document.querySelector('#tablaUsuarios tbody');
+  if(!tbody) return;
+  const q = ((document.getElementById('usuariosBuscar')||{}).value||'').trim().toLowerCase();
+  let lista = _usuariosCache;
+  if(q) lista = lista.filter(u=> String(u.usuario||'').toLowerCase().includes(q) || String(u.rol||'').toLowerCase().includes(q));
+  tbody.innerHTML = lista.map(u=>`
     <tr>
       <td>${escapeHtml(u.usuario)}</td>
       <td>${escapeHtml(u.rol)}</td>
@@ -2192,13 +2255,29 @@ async function doChangePassword(){
 /* ============================================================
  *  BITÁCORA — compartida por los 3 módulos
  * ============================================================ */
+let _bitacoraCache = [];
 async function renderBitacora(){
   const r = await apiPost('listBitacora', {});
   document.getElementById('bitacoraSubt').textContent = session && session.rol==='admin'
     ? 'Mostrando las acciones de TODO el equipo.' : 'Mostrando tus propias acciones.';
   const tbody = document.querySelector('#tablaBitacora tbody');
   if(!(r && r.ok)){ tbody.innerHTML = '<tr><td colspan="6">'+escapeHtml((r&&r.error)||'Error')+'</td></tr>'; return; }
-  tbody.innerHTML = r.entradas.map(e=>`
+  _bitacoraCache = r.entradas || [];
+  renderBitacoraFiltrado();
+}
+function renderBitacoraFiltrado(){
+  const tbody = document.querySelector('#tablaBitacora tbody');
+  if(!tbody) return;
+  const q = ((document.getElementById('bitacoraBuscar')||{}).value||'').trim().toLowerCase();
+  let lista = _bitacoraCache;
+  if(q) lista = lista.filter(e=>
+    String(e.usuario||'').toLowerCase().includes(q)
+    || String(e.rol||'').toLowerCase().includes(q)
+    || String(e.modulo||'').toLowerCase().includes(q)
+    || String(e.accion||'').toLowerCase().includes(q)
+    || String(e.detalle||'').toLowerCase().includes(q)
+  );
+  tbody.innerHTML = lista.map(e=>`
     <tr><td>${escapeHtml(String(e.fecha||'').replace('T',' ').slice(0,19))}</td><td>${escapeHtml(e.usuario)}</td><td>${escapeHtml(e.rol)}</td>
     <td>${escapeHtml(e.modulo||'')}</td><td>${escapeHtml(e.accion)}</td><td>${escapeHtml(e.detalle||'')}</td></tr>`
   ).join('') || '<tr><td colspan="6" style="color:#888">Sin registros</td></tr>';
@@ -2286,7 +2365,17 @@ function cambiarTabBD(tab){
 
 function renderTablasBD(){
   const tbP = document.querySelector('#tablaPdv tbody');
-  tbP.innerHTML = db.pdv.map(p=>
+  const qPdv = ((document.getElementById('pdvBuscar')||{}).value||'').trim().toLowerCase();
+  let listaPdv = db.pdv;
+  if(qPdv) listaPdv = listaPdv.filter(p=>
+    String(p.punto||'').toLowerCase().includes(qPdv)
+    || String(p.estructura1||'').toLowerCase().includes(qPdv)
+    || String(p.estructura2||'').toLowerCase().includes(qPdv)
+    || String(p.ciudad||'').toLowerCase().includes(qPdv)
+    || String(p.encargado||'').toLowerCase().includes(qPdv)
+    || String(p.administrativo||'').toLowerCase().includes(qPdv)
+  );
+  tbP.innerHTML = listaPdv.map(p=>
     '<tr><td>'+p.id+'</td><td>'+escapeHtml(p.punto)+'</td><td>'+escapeHtml(p.estructura1)+'</td><td>'+escapeHtml(p.ciudad)+'</td>'+
     '<td>'+escapeHtml(p.encargado)+'</td><td>'+escapeHtml(p.administrativo)+'</td>'+
     '<td><button class="btn small outline" onclick="editarPdv('+p.id+')">Editar</button> '+
@@ -2352,7 +2441,10 @@ function renderTablasBD(){
   }).join('') || '<tr><td colspan="9" style="color:#888">Sin registros</td></tr>';
 
   const tbM = document.querySelector('#tablaMeses tbody');
-  tbM.innerHTML = db.meses.slice().sort((x,y)=>(x.orden||0)-(y.orden||0)).map(m=>
+  const qMes = ((document.getElementById('mesesBuscar')||{}).value||'').trim().toLowerCase();
+  let listaMeses = db.meses.slice().sort((x,y)=>(x.orden||0)-(y.orden||0));
+  if(qMes) listaMeses = listaMeses.filter(m=> String(m.nombre||'').toLowerCase().includes(qMes));
+  tbM.innerHTML = listaMeses.map(m=>
     '<tr><td>'+m.id+'</td><td>'+escapeHtml(m.nombre)+'</td><td>'+(m.orden||'')+'</td>'+
     '<td><button class="btn small outline" onclick="editarMes('+m.id+')">Editar</button> '+
     '<button class="btn small danger" onclick="eliminarBd(\'meses\','+m.id+')">Eliminar</button></td></tr>'
@@ -3730,6 +3822,7 @@ async function cerrarInventario(){
     actaEnCurso.id = r.id; actaEnCurso.actaNro = r.actaNro;
     await actaGenerarInfocheck();
     await apiPost('actaSave', { acta: actaEnCurso }); // re-guarda en silencio para persistir infocheckGenerado
+    pfBorrarBorrador_(DRAFT_KEYS.acta);
     toast('Inventario Nº '+r.actaNro+' cerrado');
     renderActa();
   } else toast('Error al cerrar: '+(r&&r.error));
@@ -4942,6 +5035,38 @@ function arqOnCambiaEvaluado(){
   }
 }
 
+/** Autocompletado inverso: al escribir la C.I. en los campos de Auditor o
+ *  Evaluado, si esa C.I. ya existe en el catálogo de Personal, se
+ *  selecciona automáticamente a esa persona (nombre + cargo), igual que si
+ *  se la hubiera elegido desde el <select> correspondiente. */
+function arqOnEscribeCi(tipo){
+  const ciInputId = tipo==='auditor' ? 'arqCiAuditor' : 'arqCiEvaluado';
+  const selectId = tipo==='auditor' ? 'arqSelAuditor' : 'arqSelEvaluado';
+  const cargoInputId = tipo==='auditor' ? 'arqCargoAuditor' : 'arqCargoEvaluado';
+  const ciInput = document.getElementById(ciInputId);
+  if(!ciInput) return;
+  const ciVal = String(ciInput.value||'').replace(/\D/g,'');
+  if(ciVal.length < 5) return; // evita falsos positivos con pocos dígitos
+  const p = db.personal.find(x=>{
+    const d = x.data||{};
+    const ciCat = String(d.ci||d.documento||'').replace(/\D/g,'');
+    return ciCat && ciCat===ciVal;
+  });
+  if(!p) return;
+  const sel = document.getElementById(selectId);
+  if(sel && sel.querySelector('option[value="'+p.id+'"]')) sel.value = String(p.id);
+  const d = p.data||{};
+  if(tipo==='auditor'){
+    arqEstado.auditorPersonalId = p.id;
+    arqEstado.nomAuditor = primerNombreApellido(p.nombre);
+  } else {
+    arqEstado.evaluadoPersonalId = p.id;
+    arqEstado.nombreEvaluado = primerNombreApellido(p.nombre);
+  }
+  const cargoInput = document.getElementById(cargoInputId);
+  if(cargoInput) cargoInput.value = d.cargo || p.cargo || (tipo==='evaluado' && arqEstado.modo==='cajero' ? 'Cajero' : '');
+}
+
 /** Alta rápida de Personal sin salir del Arqueo: permite cargar en el momento
  *  a un Administrativo, Encargado/a, etc. que todavía no esté en el catálogo
  *  de Personal, y lo deja automáticamente seleccionado en el desplegable
@@ -5515,7 +5640,7 @@ async function arqGuardar(){
     porcentajeIncidencia: arqEstado.porcentajeIncidencia, puntaje: arqEstado.puntaje
   };
   const r = await apiPost('arqueoSave', { record });
-  if(r && r.ok){ toast('Arqueo guardado correctamente'); }
+  if(r && r.ok){ toast('Arqueo guardado correctamente'); pfBorrarBorrador_(DRAFT_KEYS.arqueo); }
   else {
     toast('Error al guardar el arqueo: '+((r&&r.error)||'desconocido'));
     if(r && /Sesión inválida/i.test(r.error||'')) requireLoginAgain(r.error);
@@ -5575,6 +5700,7 @@ async function arqExportarPDF(){
 async function arqEmpezarDeNuevo(){
   if(!(await pfConfirm('¿Comenzar un nuevo arqueo de raíz? Se perderán los datos no guardados de este arqueo.'))) return;
   arqEstado = arqEstadoVacio();
+  pfBorrarBorrador_(DRAFT_KEYS.arqueo);
   arqRespaldoPrincipal = null; arqCajaOrigenInfo = null;
   document.getElementById('arqCardActaPreviewWrap').appendChild(document.getElementById('arqActaContainer'));
   document.getElementById('arqActaContainer').innerHTML = '';
@@ -6211,6 +6337,7 @@ async function audEmpezarDeNuevo(){
   if(audState.started && !(await pfConfirm('¿Iniciar una auditoría nueva? Si no guardaste el avance actual con "Guardar avance", se perderá (lo que ya se guardó permanece en Consulta).'))) return;
   audState = audBlankState();
   audEnsureRecordShape(audState);
+  pfBorrarBorrador_(DRAFT_KEYS.auditoria);
   audCurrentCheck = null;
   audOpenEvidencePanels = new Set();
   audIrAPaso(1);
@@ -7739,6 +7866,78 @@ function inicializarFondosDeMarca(){
     resetTimer();
   };
 })();
+
+/* ============================================================
+ *  PERSISTENCIA DE BORRADORES (Acta/Cálculo, Arqueo, Auditoría)
+ *  — para que un refresh de página (F5) no pierda datos cargados
+ *    todavía no guardados en el servidor, en ninguno de los 3 módulos.
+ * ============================================================ */
+const DRAFT_MAX_HORAS = 72; // borradores más viejos que esto se ignoran y se descartan
+const DRAFT_KEYS = {
+  acta: 'pfunif_draft_acta_v1',
+  arqueo: 'pfunif_draft_arqueo_v1',
+  auditoria: 'pfunif_draft_auditoria_v1'
+};
+function pfGuardarBorrador_(key, data){
+  try{ localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data: data })); }catch(e){}
+}
+function pfLeerBorrador_(key){
+  try{
+    const raw = localStorage.getItem(key);
+    if(!raw) return null;
+    const obj = JSON.parse(raw);
+    if(!obj || !obj.ts || !obj.data) return null;
+    if((Date.now()-obj.ts)/3600000 > DRAFT_MAX_HORAS) return null;
+    return obj.data;
+  }catch(e){ return null; }
+}
+function pfBorrarBorrador_(key){ try{ localStorage.removeItem(key); }catch(e){} }
+
+function pfActaTieneContenido_(){
+  return !!(actaEnCurso && (actaEnCurso.pdvId || actaEnCurso.id ||
+    (actaEnCurso.descuentos && actaEnCurso.descuentos.empleados && actaEnCurso.descuentos.empleados.length)));
+}
+function pfArqueoTieneContenido_(){
+  return !!(arqEstado && (arqEstado.pdvId || arqEstado.auditorPersonalId || arqEstado.evaluadoPersonalId ||
+    (arqEstado.otrosValores && arqEstado.otrosValores.length) ||
+    (arqEstado.conteo && Object.keys(arqEstado.conteo).length)));
+}
+function pfAuditoriaTieneContenido_(){
+  return !!(audState && audState.started);
+}
+
+function pfAutoguardarBorradores_(){
+  try{
+    if(pfActaTieneContenido_()) pfGuardarBorrador_(DRAFT_KEYS.acta, actaEnCurso); else pfBorrarBorrador_(DRAFT_KEYS.acta);
+    if(pfArqueoTieneContenido_()) pfGuardarBorrador_(DRAFT_KEYS.arqueo, arqEstado); else pfBorrarBorrador_(DRAFT_KEYS.arqueo);
+    if(pfAuditoriaTieneContenido_()) pfGuardarBorrador_(DRAFT_KEYS.auditoria, audState); else pfBorrarBorrador_(DRAFT_KEYS.auditoria);
+  }catch(e){}
+}
+let _pfAutosaveBorradoresTimer = null;
+function pfIniciarAutoguardadoBorradores_(){
+  if(_pfAutosaveBorradoresTimer) return;
+  _pfAutosaveBorradoresTimer = setInterval(pfAutoguardarBorradores_, 5000);
+}
+
+/** Se llama una sola vez, apenas se entra a la app (login normal o sesión
+ *  restaurada tras un refresh). Si hay borradores válidos (no vencidos) de
+ *  Acta, Arqueo y/o Auditoría, los restaura en las variables de estado
+ *  correspondientes ANTES de mostrar cualquier pantalla, para que al
+ *  navegar a esos módulos ya aparezcan con los datos que estaban
+ *  cargados. Luego arranca el autoguardado periódico. */
+function pfRestaurarBorradores_(){
+  const restaurados = [];
+  const bActa = pfLeerBorrador_(DRAFT_KEYS.acta);
+  if(bActa){ actaEnCurso = Object.assign(actaVacia(), bActa); restaurados.push('Acta / Cálculo'); }
+  const bArq = pfLeerBorrador_(DRAFT_KEYS.arqueo);
+  if(bArq){ arqEstado = Object.assign(arqEstadoVacio(), bArq); restaurados.push('Arqueo de Valores'); }
+  const bAud = pfLeerBorrador_(DRAFT_KEYS.auditoria);
+  if(bAud){ audState = Object.assign(audBlankState(), bAud); audEnsureRecordShape(audState); restaurados.push('Auditoría Interna'); }
+  if(restaurados.length){
+    toast('Se restauraron datos no guardados de: '+restaurados.join(', '));
+  }
+  pfIniciarAutoguardadoBorradores_();
+}
 
 window.onload = function(){ attachMoneyFormatting(); attachCedulaFormatting(); inicializarMembretes(); inicializarFondosDeMarca(); initLoginSlideshow(); boot(); };
 </script>
