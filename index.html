@@ -266,7 +266,8 @@
 
   /* ---------- Vales y Pagarés ---------- */
   .docs-valespagares{display:flex;flex-direction:column;gap:26px;margin-top:16px}
-  .doc-box{max-width:760px;background:#fff;font-size:12.5px;page-break-after:always}
+  .doc-box{max-width:760px;background:#fff;font-size:12.5px}
+  .doc-box:not(:last-child){page-break-after:always}
   .doc-vale{border:1px solid #333}
   .doc-vale .dv-head{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid #333}
   .doc-vale .dv-logo{font-weight:800;font-size:19px;letter-spacing:.3px}
@@ -1040,13 +1041,15 @@
             <button class="btn outline" onclick="arqAbrirSub(3)">3. Caja Chica</button>
             <button class="btn outline" onclick="arqAbrirSub(4)">4. Moneda Extranjera</button>
             <button class="btn outline" onclick="arqAbrirSub(5)">5. Vale a Favor De</button>
+            <button class="btn outline" onclick="arqAbrirSub(6)">6. Obs. 2 del Arqueo</button>
           </div>
 
           <div class="card hidden" id="arqSub1">
             <h4 style="margin-top:0;color:var(--azul)">Agregar Gasto (Factura)</h4>
-            <div class="grid c3">
+            <div class="grid c4">
               <div class="campo"><label>Número de Factura</label><input id="arqGastoFact"></div>
               <div class="campo"><label>Razón Social</label><input id="arqGastoRazon"></div>
+              <div class="campo"><label>Fecha</label><input type="date" id="arqGastoFecha"></div>
               <div class="campo"><label>Valor (Gs.)</label><input id="arqGastoValor" class="money"></div>
             </div>
             <button class="btn success small" onclick="arqInsertarGasto()">Confirmar e Insertar Gasto</button>
@@ -1057,12 +1060,8 @@
             <div class="grid c2">
               <div class="campo"><label>Tipo</label>
                 <select id="arqCajaTipo">
-                  <option value="Refuerzo Caja Operativa turno mañana (verificado)">Refuerzo Caja Operativa turno mañana</option>
-                  <option value="Refuerzo Caja Operativa turno tarde (verificado)">Refuerzo Caja Operativa turno tarde</option>
-                  <option value="Refuerzo Caja Operativa turno madrugada (verificado)">Refuerzo Caja Operativa turno madrugada</option>
-                  <option value="Caja Operativa turno mañana (verificada)">Caja Operativa turno mañana</option>
-                  <option value="Caja Operativa turno tarde (verificada)">Caja Operativa turno tarde</option>
-                  <option value="Caja Operativa turno madrugada (verificada)">Caja Operativa turno madrugada</option>
+                  <option value="Refuerzo Caja Operativa (verificado)">Refuerzo Caja Operativa</option>
+                  <option value="Caja Operativa (verificada)">Caja Operativa</option>
                 </select>
               </div>
               <div class="campo"><label>Valor Asignado (Gs.)</label><input id="arqCajaValor" class="money"></div>
@@ -1100,6 +1099,13 @@
               <div class="campo"><label>Valor (Gs.)</label><input id="arqValeValor" class="money"></div>
             </div>
             <button class="btn success small" onclick="arqInsertarVale()">Confirmar e Insertar Vale</button>
+          </div>
+
+          <div class="card hidden" id="arqSub6">
+            <h4 style="margin-top:0;color:var(--azul)">Observación Adicional del Arqueo (Obs. 2)</h4>
+            <div class="subt" style="margin-top:-4px;margin-bottom:8px">Nota general del auditor sobre todo el arqueo, aparte de la Observación automática que ya genera el sistema al analizar la diferencia.</div>
+            <div class="campo"><label>Observación</label><textarea id="arqObs2Texto" rows="3" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-family:inherit"></textarea></div>
+            <button class="btn success small" onclick="arqGuardarObs2()">Guardar Observación</button>
           </div>
         </div>
 
@@ -4946,7 +4952,8 @@ function arqEstadoVacio(){
     diferencia: 0, porcentajeIncidencia: 0, puntaje: '',
     timestampApertura: null, timestampCierre: null,
     segmentadorEmisor: 'Auditoria Administrativa y Gestion en Pdv',
-    tipoDocumento: 'Tolerancia', nroCajaDeposito: ''
+    tipoDocumento: 'Tolerancia', nroCajaDeposito: '',
+    observacion2: ''      // Obs. 2: nota general del auditor sobre todo el arqueo
   };
 }
 let arqEstado = arqEstadoVacio();
@@ -5278,6 +5285,7 @@ function arqConstruirActaHtml(estado){
     '</tbody></table>'+
     '<div class="acta-texto" id="arqTextoCierre" style="margin-top:10px"></div>'+
     '<div class="resultado-box" id="arqObsCierre" style="margin-top:8px"><b>Observación:</b> Calculando balance...</div>'+
+    (estado.observacion2 ? '<div class="resultado-box" style="margin-top:8px"><b>Obs. 2 (Arqueo):</b> '+escapeHtml(estado.observacion2)+'</div>' : '')+
     '<div class="firmas-grid" style="grid-template-columns:repeat(2,1fr);margin-top:26px">'+
       '<div class="firma-box"><div class="firma-line"></div>'+
         (esFemenino?'Auditada':'Auditado')+': <b>'+escapeHtml(estado.nombreEvaluado||'')+'</b><br>'+
@@ -5297,7 +5305,7 @@ function arqRenderActaContainer(){
 
 /* ---------- Otros Valores ---------- */
 function arqAbrirSub(n){
-  for(let i=1;i<=5;i++){
+  for(let i=1;i<=6;i++){
     const el = document.getElementById('arqSub'+i);
     if(el) el.classList.toggle('hidden', i!==n);
   }
@@ -5313,21 +5321,28 @@ function arqEliminarOtroValor(idx){
 function arqInsertarGasto(){
   const fact = document.getElementById('arqGastoFact').value.trim();
   const razon = document.getElementById('arqGastoRazon').value.trim();
+  const fechaRaw = document.getElementById('arqGastoFecha').value;
   const valor = parseMoneyInput('arqGastoValor');
   if(!fact || !razon || valor<=0){ toast('Completá factura, razón social y valor'); return; }
-  arqAgregarOtroValor('Gasto s/ Factura N° '+fact+' - Razón Social: '+razon, valor);
-  ['arqGastoFact','arqGastoRazon','arqGastoValor'].forEach(id=>document.getElementById(id).value='');
+  let fechaFmt = '';
+  if(fechaRaw){ const partes = fechaRaw.split('-'); fechaFmt = ' del '+partes[2]+'/'+partes[1]+'/'+partes[0]; }
+  arqAgregarOtroValor('Gasto s/ Factura N° '+fact+fechaFmt+' - Razón Social: '+razon, valor);
+  ['arqGastoFact','arqGastoRazon','arqGastoFecha','arqGastoValor'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('arqSub1').classList.add('hidden');
 }
-function arqInsertarCajaRefuerzo(){
+async function arqInsertarCajaRefuerzo(){
   const sel = document.getElementById('arqCajaTipo');
   const tipo = sel.options[sel.selectedIndex].text;
   const valor = parseMoneyInput('arqCajaValor');
   if(valor<=0){ toast('Ingresá un valor válido'); return; }
-  arqAgregarOtroValor(tipo, valor, 'caja');
+  // Ventana siguiente: el auditor puede completar una observación para este detalle (opcional).
+  const obs = await pfPrompt('Observación para "'+tipo+'" (opcional, dejar vacío para omitir):', '');
+  if(obs === null) return; // canceló la ventana de observación
+  const desc = obs.trim() ? (tipo+' — Obs: '+obs.trim()) : tipo;
+  arqAgregarOtroValor(desc, valor, 'caja');
   document.getElementById('arqCajaValor').value = '';
   document.getElementById('arqSub2').classList.add('hidden');
-  // Al confirmar tipo+valor, se entra directo al Modo Cajero para verificar ese detalle.
+  // Al confirmar tipo+valor+obs, se entra directo al Modo Cajero para verificar ese detalle.
   arqIniciarControlCajero(arqEstado.otrosValores.length-1);
 }
 function arqInsertarCajaChica(){
@@ -5364,6 +5379,12 @@ function arqInsertarVale(){
   arqAgregarOtroValor('Vale a favor de: '+nombre+fechaFmt, valor);
   ['arqValeNombre','arqValeFecha','arqValeValor'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('arqSub5').classList.add('hidden');
+}
+function arqGuardarObs2(){
+  arqEstado.observacion2 = (document.getElementById('arqObs2Texto').value||'').trim();
+  arqRenderActaContainer();
+  document.getElementById('arqSub6').classList.add('hidden');
+  toast(arqEstado.observacion2 ? 'Observación guardada' : 'Observación quitada');
 }
 
 /* ---------- Modo Cajero ---------- */
@@ -5637,7 +5658,8 @@ async function arqGuardar(){
     conteo: arqEstado.conteo, otrosValores: arqEstado.otrosValores,
     timestampApertura: arqEstado.timestampApertura, timestampCierre: arqEstado.timestampCierre,
     segmentadorEmisor: arqEstado.segmentadorEmisor, nroCajaDeposito: arqEstado.nroCajaDeposito,
-    porcentajeIncidencia: arqEstado.porcentajeIncidencia, puntaje: arqEstado.puntaje
+    porcentajeIncidencia: arqEstado.porcentajeIncidencia, puntaje: arqEstado.puntaje,
+    observacion2: arqEstado.observacion2
   };
   const r = await apiPost('arqueoSave', { record });
   if(r && r.ok){ toast('Arqueo guardado correctamente'); pfBorrarBorrador_(DRAFT_KEYS.arqueo); }
@@ -5834,6 +5856,7 @@ async function arqReimprimirDesdeHistorial(id){
   estado.timestampCierre = rec.timestampCierre || rec.fecha || null;
   estado.segmentadorEmisor = rec.segmentadorEmisor || estado.segmentadorEmisor;
   estado.nroCajaDeposito = rec.nroCajaDeposito || '';
+  estado.observacion2 = rec.observacion2 || '';
 
   // totalBilletes/totalMonedas/totalEfectivo no se persisten en el record (solo
   // el detalle de conteo): se recalculan igual que arqCalcularConteo en el wizard.
