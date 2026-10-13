@@ -746,7 +746,7 @@
       <div class="card">
         <h4 style="margin-top:0">Datos del inventario</h4>
         <div class="grid c4">
-          <div class="campo"><label>Punto de Venta</label><select id="calcPdv" onchange="onCambiaPdvCalculo()"></select></div>
+          <div class="campo"><label>Punto de Venta</label><input type="text" id="calcPdvFiltro" placeholder="Filtrar..." style="width:100%;box-sizing:border-box;margin-bottom:4px;padding:5px 8px;border:1px solid var(--border,#cbd5e1);border-radius:6px;font-size:0.82rem"><select id="calcPdv" onchange="onCambiaPdvCalculo()"></select></div>
           <div class="campo"><label>Mes</label><select id="calcMes" disabled></select><div class="subt" style="margin:2px 0 0">Se calcula solo, igual al mes de la Fecha Inventario Actual.</div></div>
           <div class="campo"><label>Año</label><input type="number" id="calcAnio"></div>
           <div class="campo"><label>Ciudad (para el acta)</label><input id="calcCiudad"></div>
@@ -966,6 +966,7 @@
           <h4 style="margin-top:0;color:var(--azul)">Datos Iniciales de la Auditoría</h4>
           <div class="grid c2">
             <div class="campo"><label>Punto de Venta / Sucursal a Auditar</label>
+              <input type="text" id="arqSelPdvFiltro" placeholder="Filtrar..." style="width:100%;box-sizing:border-box;margin-bottom:4px;padding:5px 8px;border:1px solid var(--border,#cbd5e1);border-radius:6px;font-size:0.82rem">
               <select id="arqSelPdv" onchange="arqOnCambiaPdv()"><option value="">— Seleccionar —</option></select>
             </div>
             <div class="campo"><label>Ciudad del Arqueo</label><input id="arqCiudad"></div>
@@ -974,6 +975,7 @@
           <h4 style="margin:16px 0 8px;color:var(--azul)">Personal de Auditoría Interviniente</h4>
           <div class="grid c3">
             <div class="campo"><label>Auditor</label>
+              <input type="text" id="arqSelAuditorFiltro" placeholder="Filtrar..." style="width:100%;box-sizing:border-box;margin-bottom:4px;padding:5px 8px;border:1px solid var(--border,#cbd5e1);border-radius:6px;font-size:0.82rem">
               <div style="display:flex;gap:6px">
                 <select id="arqSelAuditor" onchange="arqOnCambiaAuditor()" style="flex:1"><option value="">— Seleccionar —</option></select>
                 <button type="button" class="btn outline small" title="Agregar una persona nueva al catálogo de Personal" onclick="arqAgregarPersonalRapido('arqSelAuditor')">+ Nuevo</button>
@@ -987,6 +989,7 @@
           <div class="subt" style="margin-top:-4px;margin-bottom:8px">Podés elegir a cualquier persona del catálogo de Personal — Auditor, Administrativo, Encargado/a, etc. Si todavía no está cargada, usá "+ Nuevo".</div>
           <div class="grid c3">
             <div class="campo"><label id="arqLabelEvaluado">Personal Evaluado</label>
+              <input type="text" id="arqSelEvaluadoFiltro" placeholder="Filtrar..." style="width:100%;box-sizing:border-box;margin-bottom:4px;padding:5px 8px;border:1px solid var(--border,#cbd5e1);border-radius:6px;font-size:0.82rem">
               <div style="display:flex;gap:6px">
                 <select id="arqSelEvaluado" onchange="arqOnCambiaEvaluado()" style="flex:1"><option value="">— Seleccionar —</option></select>
                 <button type="button" class="btn outline small" title="Agregar una persona nueva al catálogo de Personal (Administrativo, Encargado/a, etc.)" onclick="arqAgregarPersonalRapido('arqSelEvaluado')">+ Nuevo</button>
@@ -1227,6 +1230,7 @@
           <h4 style="margin-top:0;color:var(--azul)">Datos generales de la auditoría</h4>
           <div class="grid c3">
             <div class="campo"><label>Sucursal / Punto de Venta</label>
+              <input type="text" id="audSelPdvFiltro" placeholder="Filtrar..." style="width:100%;box-sizing:border-box;margin-bottom:4px;padding:5px 8px;border:1px solid var(--border,#cbd5e1);border-radius:6px;font-size:0.82rem">
               <select id="audSelPdv" onchange="audOnCambiaPdv()"><option value="">— Seleccionar —</option></select>
             </div>
             <div class="campo"><label>N° de PDV</label><input id="audNumeroPdv" readonly></div>
@@ -1234,20 +1238,25 @@
           </div>
           <div class="grid c3">
             <div class="campo"><label>Auditor / Responsable</label>
+              <input type="text" id="audSelAuditorFiltro" placeholder="Filtrar..." style="width:100%;box-sizing:border-box;margin-bottom:4px;padding:5px 8px;border:1px solid var(--border,#cbd5e1);border-radius:6px;font-size:0.82rem">
               <select id="audSelAuditor" onchange="audOnCambiaPersonal('auditor')"><option value="">— Seleccionar —</option></select>
             </div>
             <div class="campo"><label>Supervisor/a</label>
+              <input type="text" id="audSelSupervisorFiltro" placeholder="Filtrar..." style="width:100%;box-sizing:border-box;margin-bottom:4px;padding:5px 8px;border:1px solid var(--border,#cbd5e1);border-radius:6px;font-size:0.82rem">
               <select id="audSelSupervisor" onchange="audOnCambiaPersonal('supervisor')"><option value="">— Seleccionar —</option></select>
             </div>
             <div class="campo"><label>Regente</label>
+              <input type="text" id="audSelRegenteFiltro" placeholder="Filtrar..." style="width:100%;box-sizing:border-box;margin-bottom:4px;padding:5px 8px;border:1px solid var(--border,#cbd5e1);border-radius:6px;font-size:0.82rem">
               <select id="audSelRegente" onchange="audOnCambiaPersonal('regente')"><option value="">— Seleccionar —</option></select>
             </div>
           </div>
           <div class="grid c3">
             <div class="campo"><label>Administrativo/a</label>
+              <input type="text" id="audSelAdministrativoFiltro" placeholder="Filtrar..." style="width:100%;box-sizing:border-box;margin-bottom:4px;padding:5px 8px;border:1px solid var(--border,#cbd5e1);border-radius:6px;font-size:0.82rem">
               <select id="audSelAdministrativo" onchange="audOnCambiaPersonal('administrativo')"><option value="">— Seleccionar —</option></select>
             </div>
             <div class="campo"><label>Encargado/a de PDV</label>
+              <input type="text" id="audSelEncargadoFiltro" placeholder="Filtrar..." style="width:100%;box-sizing:border-box;margin-bottom:4px;padding:5px 8px;border:1px solid var(--border,#cbd5e1);border-radius:6px;font-size:0.82rem">
               <select id="audSelEncargado" onchange="audOnCambiaPersonal('encargado')"><option value="">— Seleccionar —</option></select>
             </div>
             <div class="campo"><label>Observación general</label><input id="audObsGeneral" placeholder="Notas generales (opcional)"></div>
@@ -7962,7 +7971,39 @@ function pfRestaurarBorradores_(){
   pfIniciarAutoguardadoBorradores_();
 }
 
-window.onload = function(){ attachMoneyFormatting(); attachCedulaFormatting(); inicializarMembretes(); inicializarFondosDeMarca(); initLoginSlideshow(); boot(); };
+/* ============================================================
+ *  FILTRO DE TEXTO PARA DESPLEGABLES GRANDES (PDV / Personal)
+ *  — los catálogos de PDV y Personal pueden tener miles de registros;
+ *    esto agrega un campo de texto arriba de cada <select> grande que
+ *    oculta las <option> que no coincidan, sin tocar el valor
+ *    seleccionado ni la lógica de los onchange existentes.
+ * ============================================================ */
+function pfAdjuntarFiltroSelect(filtroInputId, selectId){
+  const filtroEl = document.getElementById(filtroInputId);
+  const selEl = document.getElementById(selectId);
+  if(!filtroEl || !selEl) return;
+  filtroEl.addEventListener('input', function(){
+    const q = this.value.trim().toLowerCase();
+    Array.from(selEl.options).forEach(opt=>{
+      if(!opt.value){ opt.hidden = false; return; } // nunca ocultar "— Seleccionar —"
+      opt.hidden = !!q && !opt.text.toLowerCase().includes(q);
+    });
+  });
+}
+function pfConfigurarFiltrosDeSelects(){
+  pfAdjuntarFiltroSelect('calcPdvFiltro', 'calcPdv');
+  pfAdjuntarFiltroSelect('arqSelPdvFiltro', 'arqSelPdv');
+  pfAdjuntarFiltroSelect('arqSelAuditorFiltro', 'arqSelAuditor');
+  pfAdjuntarFiltroSelect('arqSelEvaluadoFiltro', 'arqSelEvaluado');
+  pfAdjuntarFiltroSelect('audSelPdvFiltro', 'audSelPdv');
+  pfAdjuntarFiltroSelect('audSelAuditorFiltro', 'audSelAuditor');
+  pfAdjuntarFiltroSelect('audSelSupervisorFiltro', 'audSelSupervisor');
+  pfAdjuntarFiltroSelect('audSelRegenteFiltro', 'audSelRegente');
+  pfAdjuntarFiltroSelect('audSelAdministrativoFiltro', 'audSelAdministrativo');
+  pfAdjuntarFiltroSelect('audSelEncargadoFiltro', 'audSelEncargado');
+}
+
+window.onload = function(){ attachMoneyFormatting(); attachCedulaFormatting(); inicializarMembretes(); inicializarFondosDeMarca(); initLoginSlideshow(); pfConfigurarFiltrosDeSelects(); boot(); };
 </script>
 </body>
 </html>
